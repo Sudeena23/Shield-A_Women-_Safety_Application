@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --primary: #9e6133;
+    --primary-hover: #814a27;
+    --primary-foreground: #ffffff;
+    --background: #fdfbf7;
+    --foreground: #2d180c;
+    --card: #ffffff;
+    --card-foreground: #2d180c;
+    --border: #eee0ce;
+    --muted: #f7f0e6;
+    --muted-foreground: #814a27;
+    --accent: #b87b48;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+}
+
+/* 3D press button utility */
+.btn-primary {
+  background-color: #9e6133;
+  color: #ffffff;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 4px 14px rgba(158, 97, 51, 0.25);
+}
+.btn-primary:hover {
+  background-color: #814a27;
+  transform: translateY(-1px);
+}
+.btn-primary:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 3px rgba(158, 97, 51, 0.2);
+}
+
+.btn-outline {
+  background-color: #ffffff;
+  color: #2d180c;
+  border: 2px solid #eee0ce;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.btn-outline:hover {
+  background-color: #f7f0e6;
+  border-color: #cb9d75;
+  transform: translateY(-1px);
+}
+.btn-outline:active {
+  transform: translateY(1px);
+}
+
+/* Feature card hover fill transition */
+.feature-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.feature-card-hover:hover {
+  background-color: #9e6133 !important;
+  color: #ffffff !important;
+  border-color: #814a27 !important;
+  transform: translateY(-4px) scale(1.02);
+}
+.feature-card-hover:hover * {
+  color: #ffffff !important;
+}
