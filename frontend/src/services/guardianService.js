@@ -1,56 +1,148 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import axios from "axios";
 
-const guardiansCollection = () => {
-  if (!auth.currentUser) return null;
-  return collection(db, 'users', auth.currentUser.uid, 'guardians');
+const BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const API_URL = `${BASE_URL}/guardians`;
+
+const getToken = () => {
+  return localStorage.getItem("token");
 };
 
-const list = async () => {
-  const reference = guardiansCollection();
-  if (!reference) return [];
-  return (await getDocs(reference)).docs.map((item) => ({ id: item.id, ...item.data() }));
+const getHeaders = () => {
+  return {
+    Authorization: `Bearer ${getToken()}`,
+  };
+};
+
+// Convert MongoDB _id to frontend id
+const formatGuardian = (guardian) => {
+  return {
+    ...guardian,
+    id: guardian._id,
+  };
 };
 
 export const guardianService = {
-  getGuardians: list,
 
+  // GET ALL GUARDIANS
+  getGuardians: async () => {
+    const token = getToken();
+    if (!token) {
+      return [];
+    }
+
+    try {
+      const response = await axios.get(API_URL, {
+        headers: getHeaders(),
+      });
+
+      return response.data.guardians.map(formatGuardian);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        return [];
+      }
+      console.warn("Notice loading guardians:", error.message);
+      return [];
+    }
+  },
+
+  // ADD GUARDIAN
   addGuardian: async (guardianData) => {
-    if (!auth.currentUser) throw new Error('Sign in to manage guardians.');
-    const currentGuardians = await list();
-    const data = {
-      name: guardianData.name,
-      phone: guardianData.phone,
-      relationship: guardianData.relationship || 'Friend',
-      isPrimary: Boolean(guardianData.isPrimary),
-      status: 'Online',
-      avatarBg: guardianData.avatarBg || 'bg-[#9e6133]',
-      lastActive: 'Just now',
-    };
-    if (data.isPrimary) await Promise.all(currentGuardians.filter((g) => g.isPrimary).map((g) => updateDoc(doc(guardiansCollection(), g.id), { isPrimary: false })));
-    const created = await addDoc(guardiansCollection(), data);
-    return { id: created.id, ...data };
+    try {
+      const data = {
+        name: guardianData.name,
+        phone: guardianData.phone,
+        relationship: guardianData.relationship || "Friend",
+        isPrimary: Boolean(guardianData.isPrimary),
+      };
+
+      const response = await axios.post(
+        API_URL,
+        data,
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      return formatGuardian(response.data.guardian);
+    } catch (error) {
+      console.error("Error adding guardian:", error);
+
+      throw new Error(
+        error.response?.data?.message ||
+        "Failed to add guardian"
+      );
+    }
   },
 
+  // UPDATE GUARDIAN
   updateGuardian: async (id, guardianData) => {
-    if (!auth.currentUser) throw new Error('Sign in to manage guardians.');
-    const { id: ignored, ...data } = guardianData;
-    if (data.isPrimary) await guardianService.setPrimaryGuardian(id);
-    await updateDoc(doc(guardiansCollection(), id), data);
-    return { id, ...data };
+    try {
+      const { id: ignored, _id: ignoredId, ...data } = guardianData;
+
+      const response = await axios.put(
+        `${API_URL}/${id}`,
+        data,
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      return formatGuardian(response.data.guardian);
+    } catch (error) {
+      console.error("Error updating guardian:", error);
+
+      throw new Error(
+        error.response?.data?.message ||
+        "Failed to update guardian"
+      );
+    }
   },
 
+  // DELETE GUARDIAN
   deleteGuardian: async (id) => {
-    if (!auth.currentUser) throw new Error('Sign in to manage guardians.');
-    await deleteDoc(doc(guardiansCollection(), id));
-    return { success: true, id };
+    try {
+      const response = await axios.delete(
+        `${API_URL}/${id}`,
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting guardian:", error);
+
+      throw new Error(
+        error.response?.data?.message ||
+        "Failed to delete guardian"
+      );
+    }
   },
 
+  // SET PRIMARY GUARDIAN
   setPrimaryGuardian: async (id) => {
-    if (!auth.currentUser) throw new Error('Sign in to manage guardians.');
-    const batch = writeBatch(db);
-    (await list()).forEach((guardian) => batch.update(doc(guardiansCollection(), guardian.id), { isPrimary: guardian.id === id }));
-    await batch.commit();
-    return list();
+    try {
+      const response = await axios.patch(
+        `${API_URL}/${id}/primary`,
+        {},
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      return response.data.guardians.map(formatGuardian);
+    } catch (error) {
+      console.error(
+        "Error setting primary guardian:",
+        error
+      );
+
+      throw new Error(
+        error.response?.data?.message ||
+        "Failed to set primary guardian"
+      );
+    }
   },
 };

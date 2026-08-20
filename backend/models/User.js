@@ -32,11 +32,6 @@ const userSchema = new mongoose.Schema(
       default: "user"
     },
 
-    emergencyPin: {
-      type: String,
-      default: "9911"
-    },
-
     bloodGroup: {
       type: String,
       default: ""

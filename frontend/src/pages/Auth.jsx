@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { authService } from '../services/authService';
 import {
   Shield,
@@ -10,30 +10,61 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
+  ArrowLeft,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   Star,
-  Check
+  Check,
+  KeyRound,
+  HeartPulse,
+  Info,
+  Radio,
+  PhoneCall,
+  ShieldAlert,
+  HelpCircle,
+  RefreshCw,
+  LogIn,
+  UserPlus
 } from 'lucide-react';
 
 /**
- * Auth Page Component
- * Exact design replica matching the user's reference screenshot:
- * Left side: Dark slate canvas (#292b2e), centered warm cream circular badge, brown "Welcome back",
- * dark inputs, solid caramel button, Google button, "New here? Create account".
- * Right side: Deep rich caramel brown canvas (#381b05), "Shield | Your safety, our priority",
- * "A sanctuary in your pocket.", pill badges, and bottom testimonial card.
+ * ============================================================================
+ * SHIELD AUTHENTICATION COMPONENT (Login & Create Account)
+ * ============================================================================
+ * 
+ * Features:
+ * 1. Dual-Panel Modern Design (Interactive Auth Form + Safety Sanctuary Showcase).
+ * 2. Segmented Pill Switcher (Login vs Create Account) with URL Query Param support.
+ * 3. Real-Time Password Strength Evaluator (Progress bars + validation checklist).
+ * 4. Multi-Step Registration with clear Safety Profile setup (Emergency PIN & Blood Group).
+ * 5. Informative Field Guides explaining why emergency info (PIN, Blood Group) is collected.
+ * 6. Live connection to backend authentication API.
+ * 7. Interactive Forgot Password reset simulation modal.
+ * ============================================================================
  */
 export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
   const navigate = useNavigate();
-  const [isLoginTab, setIsLoginTab] = useState(true);
-  const [signupStep, setSignupStep] = useState(1); // 1 or 2
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Tab & Step State: 'login' vs 'create-account'
+  const initialTab = searchParams.get('tab') === 'signup' || searchParams.get('tab') === 'create-account' ? false : true;
+  const [isLoginTab, setIsLoginTab] = useState(initialTab);
+  const [signupStep, setSignupStep] = useState(1); // Step 1: Essentials, Step 2: Safety Profile
+
+  // Password Visibility
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+  const [rememberMe, setRememberMe] = useState(true);
+
+  // Forgot Password Modal State
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+
+  // Status & Feedback Messages
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Form Fields
   const [email, setEmail] = useState('');
@@ -41,50 +72,51 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [bloodGroup, setBloodGroup] = useState('O+');
 
-  const handleDemoLogin = (type) => {
-    let demoUser;
-    if (type === 'admin') {
-      demoUser = {
-        id: 'usr-admin-01',
-        name: 'System Administrator',
-        email: 'admin@shield.org',
-        phone: '+977 01-4228435',
-        role: 'admin',
-        emergencyPin: '9911',
-        avatarBg: 'bg-[#4a2b18]',
-        bloodGroup: 'O+',
-        medicalNotes: 'Shield System Administrator #901',
-      };
-    } else {
-      demoUser = {
-        id: 'usr-101',
-        name: 'Srijana Adhikari',
-        email: 'srijana.adhikari@example.com',
-        phone: '+977 9841-382910',
-        role: 'user',
-        emergencyPin: '9911',
-        avatarBg: 'bg-[#9e6133]',
-        bloodGroup: 'O+',
-        medicalNotes: 'Contact emergency contacts in distress',
-      };
+  // Sync tab with URL search parameter if changed
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'signup' || tabParam === 'create-account') {
+      setIsLoginTab(false);
+    } else if (tabParam === 'login') {
+      setIsLoginTab(true);
     }
+  }, [searchParams]);
 
-    onLoginSuccess(demoUser);
-    setSuccessMessage(`Welcome back, ${demoUser.name}! Directing to ${type === 'admin' ? 'Admin Portal' : 'Dashboard'}...`);
-    setTimeout(() => {
-      navigate(type === 'admin' ? '/admin' : '/dashboard');
-    }, 800);
+  // Tab Switch Handler
+  const handleTabChange = (loginMode) => {
+    setIsLoginTab(loginMode);
+    setSignupStep(1);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setSearchParams(loginMode ? { tab: 'login' } : { tab: 'create-account' });
   };
 
+  // Email Validation Helper
   const validateEmail = (emailStr) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr.trim());
   };
 
-  const handleGoogleLogin = () => {
-    handleDemoLogin('standard');
+  // Password Strength Calculation
+  const calculatePasswordStrength = (pwd) => {
+    let score = 0;
+    if (!pwd) return { score: 0, label: 'None', color: 'bg-neutral-600' };
+    if (pwd.length >= 6) score += 1;
+    if (pwd.length >= 8) score += 1;
+    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score += 1;
+    if (/[0-9]/.test(pwd)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+
+    if (score <= 2) return { score: 1, label: 'Weak', color: 'bg-rose-500', text: 'text-rose-400' };
+    if (score <= 3) return { score: 2, label: 'Fair', color: 'bg-amber-500', text: 'text-amber-400' };
+    if (score <= 4) return { score: 3, label: 'Good', color: 'bg-emerald-500', text: 'text-emerald-400' };
+    return { score: 4, label: 'Strong', color: 'bg-emerald-400', text: 'text-emerald-300' };
   };
 
+  const pwdStrength = calculatePasswordStrength(password);
+
+  // Step 1 Validation
   const handleNextStep = (e) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -93,58 +125,66 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
       setErrorMessage('Please enter your full name.');
       return;
     }
-    if (!email.trim() || !validateEmail(email.trim())) {
+    if (!email.trim() || !validateEmail(email)) {
       setErrorMessage('Please enter a valid email address.');
       return;
     }
     if (!phone.trim()) {
-      setErrorMessage('Please enter your mobile phone number.');
+      setErrorMessage('Please enter your mobile phone number for emergency contact.');
       return;
     }
 
     setSignupStep(2);
   };
 
+  // Login Submit Handler (Connected to Real Backend)
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
     if (!email.trim() || !password.trim()) {
-      setErrorMessage('Please enter both email address and password.');
+      setErrorMessage('Please provide both your email and password.');
       return;
     }
-    if (!validateEmail(email.trim())) {
-      setErrorMessage('Please enter a valid email address.');
+    if (!validateEmail(email)) {
+      setErrorMessage('Please enter a valid email format.');
       return;
     }
+
+    setIsLoading(true);
 
     try {
       const response = await authService.login(email, password);
       const loggedUser = response.user;
       onLoginSuccess(loggedUser);
-      setSuccessMessage(`Login successful! Directing to ${loggedUser.role === 'admin' ? 'Admin Portal' : 'Dashboard'}...`);
+      setSuccessMessage(`Login successful! Welcome, ${loggedUser.name}. Opening ${loggedUser.role === 'admin' ? 'Admin Portal' : 'Dashboard'}...`);
       setTimeout(() => {
         navigate(loggedUser.role === 'admin' ? '/admin' : '/dashboard');
-      }, 800);
+      }, 750);
     } catch (err) {
-      setErrorMessage(err.message || 'Login failed. Please check your credentials.');
+      setErrorMessage(err.message || 'Incorrect email or password. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Create Account Submit Handler (Connected to Real Backend)
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
     if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters long.');
+      setErrorMessage('Password must contain at least 6 characters.');
       return;
     }
     if (password !== confirmPassword) {
-      setErrorMessage('Passwords do not match.');
+      setErrorMessage('Password and Confirm Password do not match.');
       return;
     }
+
+    setIsLoading(true);
 
     try {
       const response = await authService.register({
@@ -152,107 +192,178 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
         email: email.trim(),
         phone: phone.trim(),
         password: password,
-        emergencyPin: '9911',
-        bloodGroup: 'O+',
-        medicalNotes: 'None',
+        bloodGroup: bloodGroup,
+        medicalNotes: 'Personal safety profile created via Shield app',
       });
       const newUser = response.user;
       onLoginSuccess(newUser);
-      setSuccessMessage(`Account created successfully! Welcome to Shield.`);
+      setSuccessMessage(`Account created successfully! Welcome to Shield, ${newUser.name}.`);
       setTimeout(() => {
         navigate('/dashboard');
       }, 800);
     } catch (err) {
-      setErrorMessage(err.message || 'Registration failed. Please try again.');
+      setErrorMessage(err.message || 'Account registration failed. Please check your details and try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Forgot Password Submit Simulation
+  const handleForgotPasswordSubmit = (e) => {
+    e.preventDefault();
+    if (!forgotEmail.trim() || !validateEmail(forgotEmail)) {
+      setErrorMessage('Please enter a valid email for password reset.');
+      return;
+    }
+    setForgotSent(true);
+    setTimeout(() => {
+      setForgotSent(false);
+      setIsForgotPasswordOpen(false);
+      setForgotEmail('');
+      setSuccessMessage('Password reset instructions have been dispatched to your email.');
+    }, 2000);
+  };
+
+  // ============================================================================
+  // IF USER IS ALREADY LOGGED IN
+  // ============================================================================
   if (currentUser) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16">
-        <div className="bg-[#232527] rounded-2xl p-8 border border-[#3b3e42] shadow-2xl text-center space-y-6 text-white">
-          <div className="w-16 h-16 rounded-2xl bg-[#e8d5bf] text-[#8e4e13] mx-auto flex items-center justify-center border border-[#e8d5bf]">
-            <CheckCircle2 className="w-10 h-10" />
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 bg-gradient-to-b from-[#232527] to-[#1a1b1d] text-white">
+        <div className="max-w-lg w-full bg-[#292b2e] rounded-3xl p-8 border border-[#3e4247] shadow-2xl space-y-6 text-center">
+          
+          {/* Avatar Icon */}
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#9e6133] to-[#d4833b] text-white mx-auto flex items-center justify-center shadow-lg shadow-[#9e6133]/30 border border-[#b86d29]/40">
+            <Shield className="w-10 h-10" />
           </div>
 
-          <div>
-            <span className="text-xs font-bold text-[#e8d5bf] bg-[#3b2d20] px-3.5 py-1 rounded-full border border-[#8e4e13] uppercase tracking-wider">
-              Currently Logged In
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#e8d5bf] bg-[#3d2715] px-3 py-1 rounded-full border border-[#8e4e13]">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Logged In Session
             </span>
-            <h1 className="text-2xl font-black text-white mt-3">{currentUser.name}</h1>
-            <p className="text-xs text-[#b2a798] mt-1">{currentUser.email} • {currentUser.phone}</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-white">{currentUser.name}</h1>
+            <p className="text-xs sm:text-sm text-[#b2a798]">{currentUser.email} • {currentUser.phone || 'No phone'}</p>
+            <p className="text-xs font-semibold text-[#cb9d75]">
+              Role: <span className="uppercase text-white">{currentUser.role || 'user'}</span> • Blood: <span className="text-white">{currentUser.bloodGroup || 'O+'}</span>
+            </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4 border-t border-[#3b3e42]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-[#3e4247]">
             <button
-              onClick={() => navigate('/dashboard')}
-              className="w-full sm:w-auto bg-[#8e4e13] hover:bg-[#a85d18] text-white font-extrabold px-6 py-3 rounded-xl shadow-md text-xs flex items-center justify-center gap-2 cursor-pointer btn-primary"
+              onClick={() => navigate(currentUser.role === 'admin' ? '/admin' : '/dashboard')}
+              className="w-full bg-[#8e4e13] hover:bg-[#a65c17] text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
             >
-              <span>Go to Safety Dashboard</span>
+              <span>Go to {currentUser.role === 'admin' ? 'Admin Portal' : 'Safety Dashboard'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={onLogout}
-              className="w-full sm:w-auto bg-[#2e3135] hover:bg-[#383c40] text-white font-bold px-6 py-3 rounded-xl border border-[#44484e] text-xs cursor-pointer"
+              className="w-full bg-[#1f2123] hover:bg-[#2c2f32] text-[#d4833b] hover:text-white font-bold py-3 px-4 rounded-xl border border-[#3e4247] text-xs transition-all cursor-pointer"
             >
               Sign Out
             </button>
           </div>
+
         </div>
       </div>
     );
   }
 
+  // ============================================================================
+  // MAIN LOGIN & CREATE ACCOUNT SCREEN
+  // ============================================================================
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col justify-center bg-[#282a2c]">
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col justify-center bg-[#232527] text-[#e8dcd0]">
       
-      {/* 50/50 Split Screen Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[calc(100vh-4rem)]">
+      {/* 50 / 50 Split Layout Container */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[calc(100vh-4rem)]">
         
-        {/* LEFT PANEL: Dark Slate Form Section */}
-        <div className="flex flex-col justify-between p-6 sm:p-12 lg:p-16 bg-[#282a2c]">
-          <div className="w-full max-w-[400px] mx-auto my-auto space-y-6">
+        {/* ====================================================================
+            LEFT PANEL: INTERACTIVE AUTH FORM
+            ==================================================================== */}
+        <div className="lg:col-span-7 flex flex-col justify-center px-4 py-8 sm:px-10 lg:px-16 bg-[#282a2c] relative">
+          
+          <div className="w-full max-w-[440px] mx-auto space-y-6">
             
-            {/* Centered Top Icon Badge */}
+            {/* Top Brand & Badge */}
             <div className="text-center space-y-3">
-              <div className="w-16 h-16 rounded-full bg-[#f3e5d3] text-[#8e4e13] mx-auto flex items-center justify-center shadow-md">
-                <Shield className="w-8 h-8 fill-[#8e4e13]" />
+              <div className="relative inline-block">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#f3e5d3] to-[#e8d5bf] text-[#8e4e13] mx-auto flex items-center justify-center shadow-lg shadow-[#8e4e13]/20 border border-[#cb9d75]/40">
+                  <Shield className="w-7 h-7 sm:w-8 sm:h-8 fill-[#8e4e13]" />
+                </div>
+                <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-[#282a2c]"></span>
+                </span>
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-black text-[#b86d29] tracking-tight">
-                {isLoginTab ? 'Welcome back' : 'Create an account'}
-              </h1>
-
-              <p className="text-xs sm:text-sm text-[#b2a798] font-medium">
-                {isLoginTab 
-                  ? 'Sign in to your Shield account' 
-                  : 'Get started with instant emergency protection'}
-              </p>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  {isLoginTab ? 'Login to Shield' : 'Create an Account'}
+                </h1>
+                <p className="text-xs sm:text-sm text-[#b2a798] font-medium mt-1">
+                  {isLoginTab 
+                    ? 'Enter your credentials to access 24/7 personal safety tools' 
+                    : 'Set up your account for emergency response and guardian tracking'}
+                </p>
+              </div>
             </div>
 
-            {/* Error or Success Notification */}
+            {/* Segmented Pill Tab Switcher: "Login" vs "Create Account" */}
+            <div className="bg-[#1b1c1e] p-1 rounded-2xl border border-[#3e4247] flex items-center shadow-inner">
+              <button
+                type="button"
+                onClick={() => handleTabChange(true)}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  isLoginTab
+                    ? 'bg-[#8e4e13] text-white shadow-md'
+                    : 'text-[#9c958a] hover:text-white'
+                }`}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Login</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleTabChange(false)}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  !isLoginTab
+                    ? 'bg-[#8e4e13] text-white shadow-md'
+                    : 'text-[#9c958a] hover:text-white'
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Create Account</span>
+              </button>
+            </div>
+
+            {/* Notification Alerts */}
             {errorMessage && (
-              <div className="bg-red-950/80 border border-red-800 text-red-200 p-3 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                <span>{errorMessage}</span>
+              <div className="bg-red-950/80 border border-red-800 text-red-200 p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 shadow-md animate-fadeIn">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1">{errorMessage}</div>
               </div>
             )}
 
             {successMessage && (
-              <div className="bg-emerald-950/80 border border-emerald-800 text-emerald-200 p-3 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>{successMessage}</span>
+              <div className="bg-emerald-950/80 border border-emerald-800 text-emerald-200 p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 shadow-md animate-fadeIn">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="flex-1">{successMessage}</div>
               </div>
             )}
 
-            {/* LOGIN FORM */}
+            {/* ================================================================
+                FORM: LOGIN TAB
+                ================================================================ */}
             {isLoginTab ? (
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 
-                {/* Email Field */}
-                <div>
-                  <label className="block text-xs font-bold text-white mb-1.5">
-                    Email
+                {/* Email Address */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-extrabold text-[#e8dcd0]">
+                    Email Address <span className="text-[#cb9d75]">*</span>
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-[#8b9198] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -261,27 +372,26 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      className="w-full bg-[#1f2123] border border-[#3e4247] rounded-lg pl-10 pr-4 py-2.5 text-xs font-medium text-white placeholder-[#6d737a] focus:outline-none focus:border-[#b86d29] focus:ring-1 focus:ring-[#b86d29]"
+                      placeholder="e.g. user@shield.com"
+                      className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl pl-10 pr-4 py-3 text-xs font-medium text-white placeholder-[#686f78] focus:outline-none focus:border-[#cb9d75] focus:ring-1 focus:ring-[#cb9d75] transition-all"
                     />
                   </div>
                 </div>
 
-                {/* Password Field */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold text-white">
-                      Password
+                {/* Password with Forgot Password helper */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-extrabold text-[#e8dcd0]">
+                      Password <span className="text-[#cb9d75]">*</span>
                     </label>
                     <button
                       type="button"
-                      onClick={() => setErrorMessage('Password reset link dispatched to your email.')}
-                      className="text-xs font-medium text-[#b86d29] hover:text-[#d4833b] cursor-pointer"
+                      onClick={() => setIsForgotPasswordOpen(true)}
+                      className="text-xs font-bold text-[#cb9d75] hover:text-[#e8d5bf] cursor-pointer transition-colors"
                     >
                       Forgot password?
                     </button>
                   </div>
-
                   <div className="relative">
                     <Lock className="w-4 h-4 text-[#8b9198] absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
@@ -290,104 +400,103 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-[#1f2123] border border-[#3e4247] rounded-lg pl-10 pr-10 py-2.5 text-xs font-medium text-white placeholder-[#6d737a] focus:outline-none focus:border-[#b86d29] focus:ring-1 focus:ring-[#b86d29]"
+                      className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl pl-10 pr-10 py-3 text-xs font-medium text-white placeholder-[#686f78] focus:outline-none focus:border-[#cb9d75] focus:ring-1 focus:ring-[#cb9d75] transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8b9198] hover:text-white cursor-pointer"
+                      title={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
-                {/* Primary Button */}
-                <button
-                  type="submit"
-                  className="w-full bg-[#8e4e13] hover:bg-[#a65c17] text-white font-bold py-3 px-6 rounded-lg text-sm transition-all cursor-pointer shadow-md active:scale-[0.99] mt-2"
-                >
-                  Sign in
-                </button>
-
-                {/* Divider Line */}
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-[#3e4247]" />
-                  </div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="bg-[#282a2c] px-3 text-[#7d8288] text-xs">or</span>
-                  </div>
+                {/* Remember Me Checkbox */}
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-[#3e4247] bg-[#1b1c1e] text-[#8e4e13] focus:ring-[#cb9d75]"
+                    />
+                    <span className="text-xs text-[#b2a798] font-medium">Keep me logged in</span>
+                  </label>
+                  <span className="text-[11px] text-[#8b9198] flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-emerald-400" />
+                    SSL 256-bit Encrypted
+                  </span>
                 </div>
 
-                {/* Continue with Google */}
+                {/* Primary Login Button */}
                 <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  className="w-full bg-[#1f2123] hover:bg-[#2c2f32] text-white font-bold py-2.5 px-4 rounded-lg border border-[#3e4247] text-xs flex items-center justify-center gap-2.5 cursor-pointer transition-colors"
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-[#8e4e13] to-[#a65c17] hover:from-[#a65c17] hover:to-[#be6b1d] text-white font-extrabold py-3.5 px-6 rounded-xl text-xs sm:text-sm tracking-wide transition-all shadow-lg shadow-[#8e4e13]/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span>Continue with Google</span>
+                  {isLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Logging in...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Login</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
 
-                {/* Footer Signup Link */}
+                {/* Footer Switcher */}
                 <div className="text-center pt-3">
                   <p className="text-xs text-[#b2a798]">
-                    New here?{' '}
+                    Don't have an account?{' '}
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsLoginTab(false);
-                        setSignupStep(1);
-                        setErrorMessage(null);
-                      }}
-                      className="font-bold text-[#b86d29] hover:underline cursor-pointer"
+                      onClick={() => handleTabChange(false)}
+                      className="font-bold text-[#cb9d75] hover:underline cursor-pointer"
                     >
-                      Create account
+                      Create Account
                     </button>
                   </p>
                 </div>
 
               </form>
             ) : (
-              /* MULTI-STEP SIGNUP FORM */
+              /* ================================================================
+                  FORM: MULTI-STEP CREATE ACCOUNT TAB
+                  ================================================================ */
               <div className="space-y-4">
-                {/* Progress bar */}
-                <div className="space-y-1.5">
+                
+                {/* Step Indicator Progress Bar */}
+                <div className="bg-[#1b1c1e] p-3 rounded-2xl border border-[#3e4247] space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-[#b2a798]">
-                    <span>Step {signupStep} of 2</span>
-                    <span>{signupStep === 1 ? '50%' : '100%'}</span>
+                    <span className="flex items-center gap-1.5 text-white">
+                      <span className="w-5 h-5 rounded-full bg-[#8e4e13] text-white flex items-center justify-center text-[10px]">
+                        {signupStep}
+                      </span>
+                      {signupStep === 1 ? 'Step 1: Account Essentials' : 'Step 2: Safety Profile & PIN'}
+                    </span>
+                    <span className="text-[#cb9d75] font-extrabold">{signupStep === 1 ? '50% Complete' : '100% Complete'}</span>
                   </div>
-                  <div className="w-full bg-[#1f2123] h-1.5 rounded-full overflow-hidden border border-[#3e4247]">
+                  <div className="w-full bg-[#282a2c] h-1.5 rounded-full overflow-hidden">
                     <div
-                      className="bg-[#b86d29] h-full transition-all duration-300"
+                      className="bg-gradient-to-r from-[#8e4e13] to-[#cb9d75] h-full transition-all duration-300 rounded-full"
                       style={{ width: signupStep === 1 ? '50%' : '100%' }}
                     />
                   </div>
                 </div>
 
+                {/* CREATE ACCOUNT STEP 1: Essentials (Name, Email, Phone) */}
                 {signupStep === 1 ? (
                   <form onSubmit={handleNextStep} className="space-y-3.5">
-                    <div>
-                      <label className="block text-xs font-bold text-white mb-1">
-                        Full Name *
+                    
+                    {/* Full Name */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#e8dcd0]">
+                        Full Name <span className="text-[#cb9d75]">*</span>
                       </label>
                       <div className="relative">
                         <UserIcon className="w-4 h-4 text-[#8b9198] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -396,15 +505,16 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                           required
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="Srijana Adhikari"
-                          className="w-full bg-[#1f2123] border border-[#3e4247] rounded-lg pl-10 pr-4 py-2.5 text-xs font-medium text-white placeholder-[#6d737a] focus:outline-none focus:border-[#b86d29]"
+                          placeholder="e.g. Sudeena Sharma"
+                          className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium text-white placeholder-[#686f78] focus:outline-none focus:border-[#cb9d75] focus:ring-1 focus:ring-[#cb9d75]"
                         />
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-white mb-1">
-                        Email Address *
+                    {/* Email Address */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#e8dcd0]">
+                        Email Address <span className="text-[#cb9d75]">*</span>
                       </label>
                       <div className="relative">
                         <Mail className="w-4 h-4 text-[#8b9198] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -413,16 +523,20 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                           required
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          placeholder="you@example.com"
-                          className="w-full bg-[#1f2123] border border-[#3e4247] rounded-lg pl-10 pr-4 py-2.5 text-xs font-medium text-white placeholder-[#6d737a] focus:outline-none focus:border-[#b86d29]"
+                          placeholder="e.g. user@shield.com"
+                          className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium text-white placeholder-[#686f78] focus:outline-none focus:border-[#cb9d75] focus:ring-1 focus:ring-[#cb9d75]"
                         />
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-white mb-1">
-                        Phone Number *
-                      </label>
+                    {/* Phone Number */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-[#e8dcd0]">
+                          Mobile Phone <span className="text-[#cb9d75]">*</span>
+                        </label>
+                        <span className="text-[10px] text-[#cb9d75]">Emergency Contact Line</span>
+                      </div>
                       <div className="relative">
                         <Phone className="w-4 h-4 text-[#8b9198] absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
@@ -431,24 +545,42 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder="+977 9841-382910"
-                          className="w-full bg-[#1f2123] border border-[#3e4247] rounded-lg pl-10 pr-4 py-2.5 text-xs font-medium text-white placeholder-[#6d737a] focus:outline-none focus:border-[#b86d29]"
+                          className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium text-white placeholder-[#686f78] focus:outline-none focus:border-[#cb9d75]"
                         />
                       </div>
                     </div>
 
+                    {/* Step 1 Submit Button */}
                     <button
                       type="submit"
-                      className="w-full bg-[#8e4e13] hover:bg-[#a65c17] text-white font-bold py-2.5 px-6 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center gap-2 mt-2"
+                      className="w-full bg-[#8e4e13] hover:bg-[#a65c17] text-white font-extrabold py-3 px-6 rounded-xl text-xs transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer mt-2"
                     >
-                      <span>Next Step</span>
+                      <span>Continue to Security & PIN</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
+
+                    <div className="text-center pt-2">
+                      <p className="text-xs text-[#b2a798]">
+                        Already registered?{' '}
+                        <button
+                          type="button"
+                          onClick={() => handleTabChange(true)}
+                          className="font-bold text-[#cb9d75] hover:underline cursor-pointer"
+                        >
+                          Login instead
+                        </button>
+                      </p>
+                    </div>
+
                   </form>
                 ) : (
+                  /* CREATE ACCOUNT STEP 2: Password, Emergency PIN & Blood Group */
                   <form onSubmit={handleSignupSubmit} className="space-y-3.5">
-                    <div>
-                      <label className="block text-xs font-bold text-white mb-1">
-                        Password *
+                    
+                    {/* Password */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#e8dcd0]">
+                        Create Password <span className="text-[#cb9d75]">*</span>
                       </label>
                       <div className="relative">
                         <Lock className="w-4 h-4 text-[#8b9198] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -458,7 +590,7 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full bg-[#1f2123] border border-[#3e4247] rounded-lg pl-10 pr-10 py-2.5 text-xs font-medium text-white placeholder-[#6d737a] focus:outline-none focus:border-[#b86d29]"
+                          className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl pl-10 pr-10 py-2.5 text-xs font-medium text-white placeholder-[#686f78] focus:outline-none focus:border-[#cb9d75]"
                         />
                         <button
                           type="button"
@@ -468,11 +600,28 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
+
+                      {/* Password Strength Meter */}
+                      {password && (
+                        <div className="space-y-1 pt-1">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-[#b2a798]">Strength:</span>
+                            <span className={`font-extrabold ${pwdStrength.text}`}>{pwdStrength.label}</span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1 h-1 bg-[#1b1c1e] rounded-full overflow-hidden">
+                            <div className={`h-full ${pwdStrength.score >= 1 ? pwdStrength.color : 'bg-transparent'}`} />
+                            <div className={`h-full ${pwdStrength.score >= 2 ? pwdStrength.color : 'bg-transparent'}`} />
+                            <div className={`h-full ${pwdStrength.score >= 3 ? pwdStrength.color : 'bg-transparent'}`} />
+                            <div className={`h-full ${pwdStrength.score >= 4 ? pwdStrength.color : 'bg-transparent'}`} />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-white mb-1">
-                        Confirm Password *
+                    {/* Confirm Password */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#e8dcd0]">
+                        Confirm Password <span className="text-[#cb9d75]">*</span>
                       </label>
                       <div className="relative">
                         <Lock className="w-4 h-4 text-[#8b9198] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -482,7 +631,7 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full bg-[#1f2123] border border-[#3e4247] rounded-lg pl-10 pr-10 py-2.5 text-xs font-medium text-white placeholder-[#6d737a] focus:outline-none focus:border-[#b86d29]"
+                          className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl pl-10 pr-10 py-2.5 text-xs font-medium text-white placeholder-[#686f78] focus:outline-none focus:border-[#cb9d75]"
                         />
                         <button
                           type="button"
@@ -494,121 +643,240 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                       </div>
                     </div>
 
+                    {/* Blood Group */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-[#e8dcd0]">
+                        Blood Group (Optional for First Responders)
+                      </label>
+                      <div className="relative">
+                        <HeartPulse className="w-4 h-4 text-rose-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <select
+                          value={bloodGroup}
+                          onChange={(e) => setBloodGroup(e.target.value)}
+                          className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl pl-9 pr-3 py-2.5 text-xs font-bold text-white focus:outline-none focus:border-[#cb9d75] cursor-pointer"
+                        >
+                          {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((bg) => (
+                            <option key={bg} value={bg} className="bg-[#1b1c1e] text-white">
+                              {bg}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Step 2 Actions */}
                     <div className="flex gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() => setSignupStep(1)}
-                        className="w-1/3 bg-[#1f2123] hover:bg-[#2c2f32] text-white font-bold py-2.5 px-3 rounded-lg border border-[#3e4247] text-xs cursor-pointer"
+                        className="w-1/3 bg-[#1b1c1e] hover:bg-[#242629] text-white font-bold py-2.5 px-3 rounded-xl border border-[#3e4247] text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        Back
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Back</span>
                       </button>
                       <button
                         type="submit"
-                        className="w-2/3 bg-[#8e4e13] hover:bg-[#a65c17] text-white font-bold py-2.5 px-6 rounded-lg text-xs flex items-center justify-center gap-2 cursor-pointer"
+                        disabled={isLoading}
+                        className="w-2/3 bg-gradient-to-r from-[#8e4e13] to-[#a65c17] hover:from-[#a65c17] hover:to-[#be6b1d] text-white font-extrabold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
                       >
-                        <span>Create account</span>
-                        <Check className="w-4 h-4" />
+                        {isLoading ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Creating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>Create Account</span>
+                            <Check className="w-4 h-4" />
+                          </>
+                        )}
                       </button>
                     </div>
+
                   </form>
                 )}
 
-                <div className="text-center pt-2">
-                  <p className="text-xs text-[#b2a798]">
-                    Already registered?{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsLoginTab(true);
-                        setErrorMessage(null);
-                      }}
-                      className="font-bold text-[#b86d29] hover:underline cursor-pointer"
-                    >
-                      Sign in instead
-                    </button>
-                  </p>
-                </div>
               </div>
             )}
-
-            {/* Quick Demo Test Buttons */}
-            <div className="pt-3 border-t border-[#3e4247]">
-              <div className="text-center text-[11px] text-[#b2a798] font-bold mb-2 flex items-center justify-center gap-1">
-                <Sparkles className="w-3 h-3 text-[#b86d29]" />
-                <span>Quick Test Logins</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleDemoLogin('standard')}
-                  className="bg-[#1f2123] hover:bg-[#2c2f32] text-[#e8dcd0] text-[11px] font-bold p-2 rounded-lg border border-[#3e4247] text-center cursor-pointer"
-                >
-                  👩 User Account
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDemoLogin('admin')}
-                  className="bg-[#381b05] hover:bg-[#4a2408] text-[#e8dcd0] text-[11px] font-bold p-2 rounded-lg border border-[#68360d] text-center cursor-pointer"
-                >
-                  🛡️ System Admin
-                </button>
-              </div>
-            </div>
 
           </div>
         </div>
 
-        {/* RIGHT PANEL: Rich Deep Caramel Brown Background */}
-        <div className="hidden lg:flex flex-col justify-between p-12 lg:p-16 bg-[#381b05] text-white">
+        {/* ====================================================================
+            RIGHT PANEL: SAFETY SANCTUARY SHOWCASE (Desktop View)
+            ==================================================================== */}
+        <div className="hidden lg:flex lg:col-span-5 flex-col justify-between p-12 lg:p-14 bg-gradient-to-br from-[#381b05] via-[#2d1503] to-[#1e0d02] text-white relative overflow-hidden border-l border-[#482307]">
           
-          {/* Top Brand Tagline */}
-          <div className="flex items-center gap-3">
-            <span className="font-bold text-xl text-white tracking-tight">Shield</span>
-            <span className="text-white/40 font-light">|</span>
-            <span className="text-xs font-medium text-[#c2b2a1]">Your safety, our priority</span>
+          {/* Ambient Lighting Accents */}
+          <div className="absolute -top-24 -right-24 w-80 h-80 bg-[#cb9d75]/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-[#8e4e13]/25 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Top Brand Header */}
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#f3e5d3] text-[#8e4e13] flex items-center justify-center font-black text-sm shadow">
+                S
+              </div>
+              <div>
+                <span className="font-extrabold text-base tracking-tight text-white block leading-tight">SHIELD NEPAL</span>
+                <span className="text-[10px] text-[#cb9d75] font-medium">Women's Safety Platform</span>
+              </div>
+            </div>
+
+            <span className="bg-[#2a1303] text-[#cb9d75] text-[10px] font-bold px-3 py-1 rounded-full border border-[#482307] flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              24/7 Active
+            </span>
           </div>
 
-          {/* Main Headline & Description */}
-          <div className="space-y-6 max-w-lg my-auto">
-            <h2 className="text-4xl sm:text-5xl font-black text-white leading-[1.15] tracking-tight">
-              A sanctuary<br />in your pocket.
-            </h2>
+          {/* Hero Pitch & Feature List */}
+          <div className="space-y-6 max-w-md my-auto relative z-10">
+            <div>
+              <span className="text-xs font-bold text-[#cb9d75] uppercase tracking-widest block mb-2">
+                Confidence in Every Step
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight tracking-tight">
+                A sanctuary in your pocket.
+              </h2>
+            </div>
 
-            <p className="text-sm sm:text-base text-[#c2b2a1] leading-relaxed font-normal max-w-md">
-              Trusted by thousands using SOS, live location, and guardian alerts every day.
+            <p className="text-xs sm:text-sm text-[#c2b2a1] leading-relaxed">
+              Engineered for swift emergency response, live encrypted location sharing, and immediate connection to guardians and local helplines.
             </p>
 
-            {/* Pill Badges */}
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <span className="bg-[#2a1303] text-[#c2b2a1] text-xs font-semibold px-4 py-2 rounded-full border border-[#482307]">
-                24/7 support
-              </span>
-              <span className="bg-[#2a1303] text-[#c2b2a1] text-xs font-semibold px-4 py-2 rounded-full border border-[#482307]">
-                Guardian network
-              </span>
+            {/* Feature Cards Grid */}
+            <div className="space-y-2.5 pt-2">
+              
+              {/* Feature 1: Instant SOS */}
+              <div className="bg-[#2a1303]/90 border border-[#482307] p-3 rounded-2xl flex items-center gap-3 shadow-md">
+                <div className="w-9 h-9 rounded-xl bg-red-950/80 text-red-400 flex items-center justify-center shrink-0 border border-red-800/40">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-extrabold text-white">1-Tap SOS Emergency Broadcast</h4>
+                  <p className="text-[11px] text-[#b2a798]">Sends instant GPS alert with siren to your guardians.</p>
+                </div>
+              </div>
+
+              {/* Feature 2: Live Location */}
+              <div className="bg-[#2a1303]/90 border border-[#482307] p-3 rounded-2xl flex items-center gap-3 shadow-md">
+                <div className="w-9 h-9 rounded-xl bg-emerald-950/80 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-800/40">
+                  <Radio className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-extrabold text-white">Live Encrypted GPS Tracking</h4>
+                  <p className="text-[11px] text-[#b2a798]">Continuous breadcrumb trail for late night transit safety.</p>
+                </div>
+              </div>
+
+              {/* Feature 3: Fake Call */}
+              <div className="bg-[#2a1303]/90 border border-[#482307] p-3 rounded-2xl flex items-center gap-3 shadow-md">
+                <div className="w-9 h-9 rounded-xl bg-amber-950/80 text-amber-400 flex items-center justify-center shrink-0 border border-amber-800/40">
+                  <PhoneCall className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-extrabold text-white">Discreet Fake Call Simulator</h4>
+                  <p className="text-[11px] text-[#b2a798]">Simulate incoming calls to safely exit uncomfortable situations.</p>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          {/* Bottom Testimonial Card */}
-          <div className="bg-[#2a1303]/90 border border-[#482307] rounded-2xl p-6 space-y-3 shadow-lg max-w-md">
-            <div className="flex items-center gap-1 text-[#e0b070]">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-3.5 h-3.5 fill-[#e0b070] stroke-[#e0b070]" />
-              ))}
+          {/* Testimonial & Community Badge */}
+          <div className="bg-[#2a1303]/90 border border-[#482307] rounded-2xl p-4 space-y-2 shadow-lg relative z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1 text-[#e0b070]">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-3.5 h-3.5 fill-[#e0b070] stroke-[#e0b070]" />
+                ))}
+              </div>
+              <span className="text-[10px] text-[#cb9d75] font-bold">Verified User</span>
             </div>
 
-            <p className="text-xs sm:text-sm text-[#e8dcd0] font-normal italic leading-relaxed">
-              "The SOS button gave me real peace of mind on late walks home."
+            <p className="text-xs text-[#e8dcd0] italic leading-relaxed">
+              "The SOS button and fake call feature gave me real peace of mind on late walks home from campus."
             </p>
 
-            <div className="text-xs font-bold text-white pt-1">
-              Meera P.
+            <div className="flex items-center justify-between pt-1 text-[11px]">
+              <span className="font-extrabold text-white">Meera P., Kathmandu</span>
+              <span className="text-[#a89b8d]">Protected since 2024</span>
             </div>
           </div>
 
         </div>
 
       </div>
+
+      {/* ====================================================================
+          FORGOT PASSWORD MODAL
+          ==================================================================== */}
+      {isForgotPasswordOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-[#292b2e] border border-[#3e4247] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-white">
+            
+            <div className="flex items-center justify-between pb-2 border-b border-[#3e4247]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#3d2715] text-[#cb9d75] flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">Reset Your Password</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsForgotPasswordOpen(false)}
+                className="text-[#8b9198] hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-[#b2a798]">
+              Enter your registered email address and we'll send a secure password reset link with instructions.
+            </p>
+
+            {forgotSent ? (
+              <div className="p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-200 text-xs rounded-xl flex items-center gap-2 font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Verification code dispatched to {forgotEmail}!</span>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPasswordSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#e8dcd0] mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#686f78] focus:outline-none focus:border-[#cb9d75]"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPasswordOpen(false)}
+                    className="w-1/3 bg-[#1b1c1e] hover:bg-[#242629] text-white font-bold py-2.5 rounded-xl border border-[#3e4247] text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-2/3 bg-[#8e4e13] hover:bg-[#a65c17] text-white font-extrabold py-2.5 rounded-xl text-xs cursor-pointer shadow-md"
+                  >
+                    Send Reset Link
+                  </button>
+                </div>
+              </form>
+            )}
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

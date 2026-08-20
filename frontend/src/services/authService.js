@@ -1,70 +1,137 @@
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-} from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import axios from "axios";
 
-const profileRef = (uid) => doc(db, 'users', uid);
-
-const toProfile = (firebaseUser, data = {}) => ({
-  id: firebaseUser.uid,
-  name: data.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Shield User',
-  email: firebaseUser.email || data.email || '',
-  phone: data.phone || '',
-  role: data.role || 'user',
-  emergencyPin: data.emergencyPin || '9911',
-  bloodGroup: data.bloodGroup || 'O+',
-  medicalNotes: data.medicalNotes || '',
-  avatarBg: data.avatarBg || 'bg-[#9e6133]',
-  status: data.status || 'Active',
-  registeredAt: data.registeredAt || new Date().toISOString().split('T')[0],
-});
-
-const loadProfile = async (firebaseUser) => {
-  const reference = profileRef(firebaseUser.uid);
-  const snapshot = await getDoc(reference);
-  if (snapshot.exists()) return toProfile(firebaseUser, snapshot.data());
-
-  const profile = toProfile(firebaseUser);
-  await setDoc(reference, { ...profile, id: firebaseUser.uid });
-  return profile;
-};
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_URL = `${BASE_URL}/auth`;
 
 export const authService = {
+  // LOGIN
   login: async (email, password) => {
-    const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
-    const user = await loadProfile(credential.user);
-    return { success: true, token: await credential.user.getIdToken(), user };
-  },
+    try {
+      const response = await axios.post(`${API_URL}/login`, {
+        email: email.trim(),
+        password,
+      });
 
-  register: async (userData) => {
-    const credential = await createUserWithEmailAndPassword(
-      auth,
-      userData.email.trim(),
-      userData.password
-    );
-    const user = toProfile(credential.user, userData);
-    // Roles are always created as "user". Promote administrators only through
-    // trusted server-side tooling or the Firebase console.
-    user.role = 'user';
-    await setDoc(profileRef(credential.user.uid), { ...user, id: credential.user.uid });
-    return { success: true, token: await credential.user.getIdToken(), user };
-  },
+      const { token, user } = response.data;
 
-  logout: () => signOut(auth),
+      // Save JWT token
+      localStorage.setItem("token", token);
 
-  getCurrentUser: async () => (auth.currentUser ? loadProfile(auth.currentUser) : null),
+      // Save user
+      localStorage.setItem("user", JSON.stringify(user));
 
-  updateProfile: async (userIdOrUser, updateData) => {
-    const userId = typeof userIdOrUser === 'object' ? userIdOrUser.id : userIdOrUser;
-    const data = typeof userIdOrUser === 'object' ? userIdOrUser : updateData;
-    if (!auth.currentUser || auth.currentUser.uid !== userId) {
-      throw new Error('You can only update your own profile.');
+      return {
+        success: true,
+        token,
+        user,
+      };
+    } catch (error) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else if (error.code === "ERR_NETWORK" || error.message === "Network Error") {
+        throw new Error("Cannot connect to Shield server. Please ensure backend is running (port 5000).");
+      }
+      throw new Error(error.message || "Login failed. Please check your credentials.");
     }
-    const { id, email, role, ...safeData } = data;
-    await updateDoc(profileRef(userId), safeData);
-    return loadProfile(auth.currentUser);
+  },
+
+  // REGISTER
+  register: async (userData) => {
+    try {
+      const response = await axios.post(`${API_URL}/register`, {
+        name: userData.name,
+        email: userData.email.trim(),
+        password: userData.password,
+        phone: userData.phone || "",
+        bloodGroup: userData.bloodGroup || "O+",
+        medicalNotes: userData.medicalNotes || "",
+      });
+
+      const { token, user } = response.data;
+
+      // Save JWT token
+      localStorage.setItem("token", token);
+
+      // Save user
+      localStorage.setItem("user", JSON.stringify(user));
+
+      return {
+        success: true,
+        token,
+        user,
+      };
+    } catch (error) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else if (error.code === "ERR_NETWORK" || error.message === "Network Error") {
+        throw new Error("Cannot connect to Shield server. Please ensure backend is running (port 5000).");
+      }
+      throw new Error(error.message || "Registration failed. Please check your details.");
+    }
+  },
+
+  // LOGOUT
+  logout: () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  },
+
+  // GET CURRENT USER
+  getCurrentUser: async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const response = await axios.get(`${API_URL}/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      return response.data.user;
+    } catch (error) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
+      return null;
+    }
+  },
+
+  // UPDATE PROFILE
+  updateProfile: async (userIdOrData, maybeData) => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("You must be logged in.");
+    }
+
+    // Support both updateProfile(userData) and updateProfile(userId, userData)
+    const updateData =
+      typeof userIdOrData === "object" ? userIdOrData : maybeData || {};
+    const targetUrl =
+      typeof userIdOrData === "string"
+        ? `${API_URL}/profile/${userIdOrData}`
+        : `${API_URL}/me`;
+
+    try {
+      const response = await axios.put(targetUrl, updateData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const updatedUser = response.data.user;
+
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      return updatedUser;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.message || "Failed to update profile"
+      );
+    }
   },
 };

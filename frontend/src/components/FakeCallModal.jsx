@@ -21,13 +21,6 @@ export const FakeCallModal = ({ isOpen, onClose }) => {
       number: '+977 9801234567',
       avatarBg: 'bg-amber-900',
       tag: 'Family Guardian',
-      phrases: [
-        "Hey sweetie! Where are you standing right now? I'm in the car pulling up!",
-        "Stay right there! I can see your live GPS location on my phone. I'm 2 minutes away.",
-        "I'm right near the main entrance in the white car with hazard lights on. Stay on the line!",
-        "Do you see me waving? Keep walking towards the main road, I've got my eyes on you.",
-        "Don't hang up! Talk to me until you get inside the car. Is anyone near you?"
-      ]
     },
     {
       id: 'police',
@@ -35,12 +28,6 @@ export const FakeCallModal = ({ isOpen, onClose }) => {
       number: 'Nepal Police #100',
       avatarBg: 'bg-blue-900',
       tag: 'Emergency Command',
-      phrases: [
-        "Shield Emergency Control here. Officer Sharma speaking. We have locked onto your location.",
-        "Patrol vehicle #4 is 200 meters away from your current coordinates. Remain calm.",
-        "We are staying on this open channel with you. Units are pulling onto your street right now.",
-        "Is there a threat nearby? Say 'Yes' or 'No', emergency responders are responding."
-      ]
     },
     {
       id: 'friend',
@@ -48,12 +35,6 @@ export const FakeCallModal = ({ isOpen, onClose }) => {
       number: '+977 9841122334',
       avatarBg: 'bg-[#9e6133]',
       tag: 'Friend Escort',
-      phrases: [
-        "Hey girl! My brother and I are in the car right outside! Where are you?",
-        "We are pulling up right now near the road! Don't worry, just walk towards our lights.",
-        "Stay on speaker with me! Who is standing around you? I'm watching the street right now.",
-        "Wave your hand so I can spot you in the dark! We see you!"
-      ]
     },
     {
       id: 'brother',
@@ -61,12 +42,6 @@ export const FakeCallModal = ({ isOpen, onClose }) => {
       number: '+977 9851098765',
       avatarBg: 'bg-emerald-900',
       tag: 'Brother Escort',
-      phrases: [
-        "Yo! I just parked near the store across the street with Dad.",
-        "Walk towards my car, we have the hazards on and we're waiting right here.",
-        "Hold on, I'm honking the horn right now! Can you hear it?",
-        "Stay on the phone with me until you open the car door!"
-      ]
     }
   ];
 

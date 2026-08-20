@@ -1,32 +1,32 @@
 {
-  "name": "backend",
+  "name": "shield-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Shield Women Safety Application - Express & Socket.io Backend API",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "seed": "node seed.js"
+  },
+  "keywords": [
+    "women-safety",
+    "express",
+    "socket.io",
+    "mongoose"
+  ],
+  "author": "Shield Safety Team",
+  "license": "ISC",
   "dependencies": {
-    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
-    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
-    "mongodb": "^7.5.0",
     "mongoose": "^9.9.2",
-    "morgan": "^1.11.0"
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
-    "@prisma/client": "^7.9.1",
-    "nodemon": "^3.1.14",
-    "prisma": "^7.9.1"
+    "nodemon": "^3.1.14"
   }
 }

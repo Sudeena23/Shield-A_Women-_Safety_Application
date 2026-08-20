@@ -31,7 +31,6 @@ export const UserSettings = ({ currentUser, onUpdateProfile }) => {
     phone: currentUser?.phone || '',
     bloodGroup: currentUser?.bloodGroup || 'O+',
     medicalNotes: currentUser?.medicalNotes || '',
-    emergencyPin: currentUser?.emergencyPin || '9911',
     address: currentUser?.address || 'Kathmandu, Nepal',
   });
 
@@ -41,7 +40,7 @@ export const UserSettings = ({ currentUser, onUpdateProfile }) => {
     return saved
       ? JSON.parse(saved)
       : {
-          autoSms: true,
+          autoPush: true,
           audioRecord: true,
           sirenSound: true,
           nightMode: false,
@@ -51,7 +50,6 @@ export const UserSettings = ({ currentUser, onUpdateProfile }) => {
   });
 
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [pinChangeMsg, setPinChangeMsg] = useState('');
 
   useEffect(() => {
     if (currentUser) {
@@ -61,7 +59,6 @@ export const UserSettings = ({ currentUser, onUpdateProfile }) => {
         phone: currentUser.phone || '',
         bloodGroup: currentUser.bloodGroup || 'O+',
         medicalNotes: currentUser.medicalNotes || '',
-        emergencyPin: currentUser.emergencyPin || '9911',
         address: currentUser.address || 'Kathmandu, Nepal',
       });
     }
@@ -89,20 +86,9 @@ export const UserSettings = ({ currentUser, onUpdateProfile }) => {
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 
-  const handlePinUpdate = (e) => {
-    e.preventDefault();
-    if (!profileData.emergencyPin || profileData.emergencyPin.length !== 4) {
-      setPinChangeMsg('PIN must be exactly 4 numerical digits.');
-      return;
-    }
-    handleSaveAll();
-    setPinChangeMsg('Emergency PIN updated successfully!');
-    setTimeout(() => setPinChangeMsg(''), 3000);
-  };
-
   const handleResetDefaults = () => {
     const defaultSettings = {
-      autoSms: true,
+      autoPush: true,
       audioRecord: true,
       sirenSound: true,
       nightMode: false,
@@ -128,7 +114,7 @@ export const UserSettings = ({ currentUser, onUpdateProfile }) => {
             <Settings className="w-7 h-7 text-[#cb9d75]" /> Account Settings & Profile
           </h1>
           <p className="text-xs text-[#eee0ce]/80 mt-1">
-            Maintain your personal safety details, emergency PIN, guardian SMS triggers, and siren preferences.
+            Maintain your personal safety details, emergency live push broadcast, and siren preferences.
           </p>
         </div>
 
@@ -329,26 +315,26 @@ export const UserSettings = ({ currentUser, onUpdateProfile }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* Toggle 1: SMS */}
+            {/* Toggle 1: Live Push Broadcast */}
             <div className="p-4 rounded-2xl border border-[#eee0ce] bg-[#fdfbf7] flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-bold text-[#2d180c] flex items-center gap-1.5">
-                  <Bell className="w-4 h-4 text-red-600" /> Instant SMS Guardian Broadcast
+                  <Bell className="w-4 h-4 text-red-600" /> Instant Live Push & Guardian Broadcast
                 </div>
                 <div className="text-[11px] text-[#814a27]/70 mt-0.5">
-                  Automatically send emergency SMS with live GPS link to all guardians.
+                  Automatically broadcast emergency distress alerts with live GPS coordinates to guardians.
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => toggleDispatchSetting('autoSms')}
+                onClick={() => toggleDispatchSetting('autoPush')}
                 className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                  dispatchSettings.autoSms ? 'bg-red-600' : 'bg-[#eee0ce]'
+                  dispatchSettings.autoPush !== false ? 'bg-red-600' : 'bg-[#eee0ce]'
                 }`}
               >
                 <span
                   className={`w-5 h-5 rounded-full bg-white shadow-md absolute top-0.5 transition-transform ${
-                    dispatchSettings.autoSms ? 'left-6.5' : 'left-0.5'
+                    dispatchSettings.autoPush !== false ? 'left-6.5' : 'left-0.5'
                   }`}
                 />
               </button>

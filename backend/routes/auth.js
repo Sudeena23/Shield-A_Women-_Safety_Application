@@ -6,52 +6,28 @@ import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Helper to create a signed JWT for a given user id
-const generateToken = (userId) => {
-  return jwt.sign(
-    { id: userId },
-    process.env.JWT_SECRET,
-    { expiresIn: "30d" }
-  );
-};
+const JWT_SECRET = process.env.JWT_SECRET || "ShieldSafetyApp_2026_SecureKey_9xK2mP7q";
 
+const generateToken = (userId) => {
+  return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: "30d" });
+};
 // POST /api/auth/register
-// Create a new user account
 router.post("/register", async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      password,
-      phone,
-      emergencyPin,
-      bloodGroup,
-      medicalNotes
-    } = req.body;
+    const { name, email, password, phone, emergencyPin, bloodGroup, medicalNotes } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, email, and password are required"
-      });
+      return res.status(400).json({ success: false, message: "Name, email, and password are required" });
     }
 
     const cleanEmail = email.trim().toLowerCase();
-
-    const existingUser = await User.findOne({
-      email: cleanEmail
-    });
-
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "An account with this email already exists"
-      });
+      return res.status(400).json({ success: false, message: "An account with this email already exists" });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
     const isAdmin = cleanEmail.includes("admin");
 
     const newUser = await User.create({
@@ -62,7 +38,7 @@ router.post("/register", async (req, res) => {
       role: isAdmin ? "admin" : "user",
       emergencyPin,
       bloodGroup,
-      medicalNotes
+      medicalNotes,
     });
 
     const token = generateToken(newUser._id);
@@ -79,53 +55,33 @@ router.post("/register", async (req, res) => {
         emergencyPin: newUser.emergencyPin,
         bloodGroup: newUser.bloodGroup,
         medicalNotes: newUser.medicalNotes,
-        status: newUser.status
-      }
+        status: newUser.status,
+      },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // POST /api/auth/login
-// Log in an existing user
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required"
-      });
+      return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
     const cleanEmail = email.trim().toLowerCase();
-
-    const user = await User.findOne({
-      email: cleanEmail
-    });
+    const user = await User.findOne({ email: cleanEmail });
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password"
-      });
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
 
-    const isMatch = await bcrypt.compare(
-      password,
-      user.password
-    );
-
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password"
-      });
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
 
     const token = generateToken(user._id);
@@ -142,41 +98,57 @@ router.post("/login", async (req, res) => {
         emergencyPin: user.emergencyPin,
         bloodGroup: user.bloodGroup,
         medicalNotes: user.medicalNotes,
-        status: user.status
-      }
+        status: user.status,
+      },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // GET /api/auth/me
-// Get the currently logged-in user
 router.get("/me", protect, async (req, res) => {
   try {
-    const user = await User.findById(req.userId)
-      .select("-password");
-
+    const user = await User.findById(req.userId).select("-password");
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
-
-    res.json({
-      success: true,
-      user
-    });
+    res.json({ success: true, user });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// PUT /api/auth/me or /api/auth/profile/:id
+const handleUpdateProfile = async (req, res) => {
+  try {
+    const allowedFields = ["name", "phone", "emergencyPin", "bloodGroup", "medicalNotes"];
+    const updates = {};
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
+
+    const targetUserId = req.params.id || req.userId;
+
+    const user = await User.findByIdAndUpdate(targetUserId, updates, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+router.put("/me", protect, handleUpdateProfile);
+router.put("/profile/:id", protect, handleUpdateProfile);
+
 
 export default router;

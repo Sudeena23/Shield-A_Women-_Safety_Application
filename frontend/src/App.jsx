@@ -1,440 +1,889 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Navbar } from './components/Navbar';
-import { Footer } from './components/Footer';
-import { SOSAlertModal } from './components/SOSAlertModal';
-import { FakeCallModal } from './components/FakeCallModal';
-import { AuthModal } from './components/AuthModal';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { ShieldAlert, AlertTriangle, X } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 
-import { Home } from './pages/Home';
-import { Dashboard } from './pages/Dashboard';
-import { Guardians } from './pages/Guardians';
-import { EmergencyNumbers } from './pages/EmergencyNumbers';
-import { LiveLocation } from './pages/LiveLocation';
-import { Auth } from './pages/Auth';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { UserProfile } from './pages/UserProfile';
-import { UserSettings } from './pages/UserSettings';
-import { NotFound } from './pages/NotFound';
+// =========================
+// USER COMPONENTS
+// =========================
+import { Navbar } from "./components/Navbar";
+import { Footer } from "./components/Footer";
+import { SOSAlertModal } from "./components/SOSAlertModal";
+import { FakeCallModal } from "./components/FakeCallModal";
+import { AuthModal } from "./components/AuthModal";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
-import { authService } from './services/authService';
-import { guardianService } from './services/guardianService';
-import { alertService } from './services/alertService';
-import { locationService } from './services/locationService';
-import { userService } from './services/userService';
+// =========================
+// USER PAGES
+// =========================
+import { Home } from "./pages/Home";
+import { Dashboard } from "./pages/Dashboard";
+import { Guardians } from "./pages/Guardians";
+import { EmergencyNumbers } from "./pages/EmergencyNumbers";
+import { LiveLocation } from "./pages/LiveLocation";
+import { Auth } from "./pages/Auth";
+import { UserProfile } from "./pages/UserProfile";
+import { UserSettings } from "./pages/UserSettings";
+import { NotFound } from "./pages/NotFound";
+
+// =========================
+// ADMIN
+// =========================
+import { AdminDashboard } from "./components/admin/AdminDashboard";
+
+// =========================
+// ICONS
+// =========================
+import { AlertTriangle, X } from "lucide-react";
+
+// =========================
+// SERVICES
+// =========================
+import { authService } from "./services/authService";
+import { guardianService } from "./services/guardianService";
+import { alertService } from "./services/alertService";
+import { userService } from "./services/userService";
+
 
 function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const validPaths = [
-    '/',
-    '/emergency-numbers',
-    '/auth',
-    '/dashboard',
-    '/guardians',
-    '/live-location',
-    '/profile',
-    '/settings',
-    '/admin',
-  ];
-  const isKnownPath = validPaths.includes(location.pathname);
+  // =========================
+  // GLOBAL STATE
+  // =========================
 
-  // Global State managed via Services
   const [guardians, setGuardians] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Auth Modal State
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState('login');
+  // =========================
+  // AUTH MODAL
+  // =========================
 
-  const handleOpenAuthModal = (tab = 'login') => {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState("login");
+
+  const handleOpenAuthModal = (tab = "login") => {
     setAuthModalTab(tab);
     setIsAuthModalOpen(true);
   };
 
-  // SOS Trigger & Misuse Prevention State
+  // =========================
+  // SOS
+  // =========================
+
   const [isSOSOpen, setIsSOSOpen] = useState(false);
-  const [isAntiPrankSOSOpen, setIsAntiPrankSOSOpen] = useState(false);
   const [cooldownError, setCooldownError] = useState(null);
 
-  // Fake Call Escaper State
+  // =========================
+  // FAKE CALL
+  // =========================
+
   const [isFakeCallOpen, setIsFakeCallOpen] = useState(false);
 
-  // Initial Data Fetching from Service Layer
+  // ==========================================================
+  // INITIAL DATA (Clean & Authenticated)
+  // ==========================================================
+
   useEffect(() => {
     const initServicesData = async () => {
       try {
+        // Get current logged-in user
         const user = await authService.getCurrentUser();
         setCurrentUser(user);
 
-        const loadedGuardians = await guardianService.getGuardians();
-        setGuardians(loadedGuardians);
+        if (user) {
+          // Get user's guardians
+          try {
+            const loadedGuardians = await guardianService.getGuardians();
+            setGuardians(loadedGuardians || []);
+          } catch (e) {
+            setGuardians([]);
+          }
 
-        const loadedAlerts = await alertService.getAlerts();
-        setAlerts(loadedAlerts);
+          // Get alerts
+          try {
+            const loadedAlerts = await alertService.getAlerts();
+            setAlerts(loadedAlerts || []);
+          } catch (e) {
+            setAlerts([]);
+          }
 
-        const loadedUsers = await userService.getUsers();
-        setUsersList(loadedUsers);
-      } catch (err) {
-        console.error('Failed to initialize data from services:', err);
+          // If Admin, load users list
+          if (user.role === "admin") {
+            try {
+              const loadedUsers = await userService.getUsers();
+              setUsersList(loadedUsers || []);
+            } catch (e) {
+              setUsersList([]);
+            }
+          }
+        } else {
+          setGuardians([]);
+          setAlerts([]);
+          setUsersList([]);
+        }
+      } catch (error) {
+        console.warn("Application initialized in guest mode:", error.message);
       }
     };
+
     initServicesData();
   }, []);
 
-  // Auth Handlers - Role-Based Redirect after login
+  // ==========================================================
+  // LOGIN
+  // ==========================================================
+
   const handleLoginSuccess = async (user) => {
     setCurrentUser(user);
     setIsAuthModalOpen(false);
 
     try {
-      const [updatedUsers, updatedGuardians, updatedAlerts] = await Promise.all([
-        userService.getUsers(),
+      const promises = [
         guardianService.getGuardians(),
         alertService.getAlerts(),
-      ]);
-      setUsersList(updatedUsers);
-      setGuardians(updatedGuardians);
-      setAlerts(updatedAlerts);
-    } catch (e) {
-      console.error(e);
+      ];
+
+      if (user.role === "admin") {
+        promises.push(userService.getUsers());
+      }
+
+      const results = await Promise.all(promises);
+      setGuardians(results[0] || []);
+      setAlerts(results[1] || []);
+      if (user.role === "admin" && results[2]) {
+        setUsersList(results[2]);
+      }
+    } catch (error) {
+      console.warn("Notice loading user data post-login:", error.message);
     }
 
-    if (user.role === 'admin') {
-      navigate('/admin');
+    // =========================
+    // ROLE BASED REDIRECT
+    // =========================
+
+    if (user.role === "admin") {
+      navigate("/admin");
     } else {
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   };
+
+  // ==========================================================
+  // LOGOUT
+  // ==========================================================
 
   const handleLogout = async () => {
     try {
       await authService.logout();
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(
+        "Logout error:",
+        error
+      );
     }
+
     setCurrentUser(null);
-    navigate('/');
+
+    navigate("/");
   };
 
-  // User Management Handlers (Admin)
+  // ==========================================================
+  // ADMIN - DELETE USER
+  // ==========================================================
+
   const handleDeleteUser = async (userId) => {
     try {
       await userService.deleteUser(userId);
-      setUsersList((previous) => previous.filter((user) => user.id !== userId));
-    } catch (e) {
-      console.error('Failed to delete user', e);
+
+      setUsersList((previous) =>
+        previous.filter(
+          (user) => user.id !== userId
+        )
+      );
+
+    } catch (error) {
+      console.error(
+        "Failed to delete user:",
+        error
+      );
     }
   };
 
-  const handleToggleUserStatus = async (userId) => {
+  // ==========================================================
+  // ADMIN - EDIT USER
+  // ==========================================================
+
+  const handleEditUser = async (
+    userId,
+    updatedFields
+  ) => {
     try {
-      const updated = await userService.toggleUserStatus(userId);
-      setUsersList((previous) => previous.map((user) => (user.id === userId ? updated : user)));
-    } catch (e) {
-      console.error('Failed to toggle user status', e);
+      const updated =
+        await userService.updateUser(
+          userId,
+          updatedFields
+        );
+
+      setUsersList((previous) =>
+        previous.map((user) =>
+          user.id === userId
+            ? updated
+            : user
+        )
+      );
+
+    } catch (error) {
+      console.error(
+        "Failed to edit user:",
+        error
+      );
     }
   };
+
+  // ==========================================================
+  // ADMIN - TOGGLE USER STATUS
+  // ==========================================================
+
+  const handleToggleUserStatus = async (
+    userId
+  ) => {
+    try {
+      const updated =
+        await userService.toggleUserStatus(
+          userId
+        );
+
+      setUsersList((previous) =>
+        previous.map((user) =>
+          user.id === userId
+            ? updated
+            : user
+        )
+      );
+
+    } catch (error) {
+      console.error(
+        "Failed to toggle user status:",
+        error
+      );
+    }
+  };
+
+  // ==========================================================
+  // ADMIN - ADD USER
+  // ==========================================================
 
   const handleAddUser = async (newUser) => {
     try {
-      const created = await userService.addUser(newUser);
-      setUsersList((prev) => [created, ...prev]);
-    } catch (e) {
-      console.error('Failed to add user', e);
+      const created =
+        await userService.addUser(newUser);
+
+      setUsersList((previous) => [
+        created,
+        ...previous,
+      ]);
+
+    } catch (error) {
+      console.error(
+        "Failed to add user:",
+        error
+      );
     }
   };
 
-  // Profile Update Handler
-  const handleUpdateProfile = async (updatedUser) => {
+  // ==========================================================
+  // PROFILE UPDATE
+  // ==========================================================
+
+  const handleUpdateProfile = async (
+    updatedUser
+  ) => {
     try {
-      const saved = await authService.updateProfile(updatedUser);
+      const saved =
+        await authService.updateProfile(
+          updatedUser
+        );
+
       setCurrentUser(saved);
-      const updatedUsers = await userService.getUsers();
+
+      const updatedUsers =
+        await userService.getUsers();
+
       setUsersList(updatedUsers);
-    } catch (e) {
-      console.error('Failed to update profile', e);
+
+    } catch (error) {
+      console.error(
+        "Failed to update profile:",
+        error
+      );
     }
   };
 
-  // CRUD Handler: Add Guardian
-  const handleAddGuardian = async (newG) => {
+  // ==========================================================
+  // GUARDIAN - ADD
+  // ==========================================================
+
+  const handleAddGuardian = async (newGuardian) => {
     try {
-      const created = await guardianService.addGuardian(newG);
-      setGuardians((prev) => [created, ...prev]);
-    } catch (e) {
-      console.error('Failed to add guardian', e);
+      const created = await guardianService.addGuardian(newGuardian);
+      setGuardians((previous) => [created, ...previous]);
+      return created;
+    } catch (error) {
+      console.error("Failed to add guardian:", error);
+      throw error;
     }
   };
 
-  // CRUD Handler: Update Guardian
-  const handleUpdateGuardian = async (updatedG) => {
+  // ==========================================================
+  // GUARDIAN - UPDATE
+  // ==========================================================
+
+  const handleUpdateGuardian = async (updatedGuardian) => {
     try {
-      const updated = await guardianService.updateGuardian(updatedG.id, updatedG);
-      setGuardians((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
-    } catch (e) {
-      console.error('Failed to update guardian', e);
+      const updated = await guardianService.updateGuardian(
+        updatedGuardian.id,
+        updatedGuardian
+      );
+
+      setGuardians((previous) =>
+        previous.map((guardian) =>
+          guardian.id === updated.id ? updated : guardian
+        )
+      );
+      return updated;
+    } catch (error) {
+      console.error("Failed to update guardian:", error);
+      throw error;
     }
   };
 
-  // CRUD Handler: Delete Guardian
+  // ==========================================================
+  // GUARDIAN - DELETE
+  // ==========================================================
+
   const handleDeleteGuardian = async (id) => {
     try {
       await guardianService.deleteGuardian(id);
-      setGuardians((prev) => prev.filter((g) => g.id !== id));
-    } catch (e) {
-      console.error('Failed to delete guardian', e);
+
+      setGuardians((previous) =>
+        previous.filter((guardian) => guardian.id !== id)
+      );
+    } catch (error) {
+      console.error("Failed to delete guardian:", error);
+      throw error;
     }
   };
 
-  // CRUD Handler: Set Primary Guardian
+  // ==========================================================
+  // GUARDIAN - PRIMARY
+  // ==========================================================
+
   const handleSetPrimaryGuardian = async (id) => {
     try {
       const updatedList = await guardianService.setPrimaryGuardian(id);
       setGuardians(updatedList);
-    } catch (e) {
-      console.error('Failed to set primary guardian', e);
+      return updatedList;
+    } catch (error) {
+      console.error("Failed to set primary guardian:", error);
+      throw error;
     }
   };
 
-  // Direct SOS Trigger -> Plays Siren & Starts Time to Dispatch
+  // ==========================================================
+  // SOS
+  // ==========================================================
+
   const handleTriggerSOS = () => {
     if (!currentUser) {
-      setIsAuthModalOpen(true);
+      handleOpenAuthModal("login");
       return;
     }
+
     handleConfirmSOSDispatch();
   };
+
+  // ==========================================================
+  // CONFIRM SOS
+  // ==========================================================
 
   const handleConfirmSOSDispatch = async () => {
     setCooldownError(null);
 
     try {
-      let liveLoc = { lat: 27.7033, lng: 85.3130, address: 'Tridevi Marg, Thamel, Kathmandu' };
+      let liveLoc = {
+        lat: 27.7033,
+        lng: 85.3130,
+        address:
+          "Tridevi Marg, Thamel, Kathmandu",
+      };
+
       try {
-        liveLoc = await locationService.getCurrentLocation();
-      } catch {
-        // Fallback location
+        liveLoc =
+          await locationService.getCurrentLocation();
+      } catch (error) {
+        console.warn(
+          "Could not get live location. Using fallback."
+        );
       }
 
-      const newAlert = await alertService.createAlert({
-        user: currentUser?.name || 'Shield User',
-        userId: currentUser?.id || 'usr-101',
-        userPhone: currentUser?.phone || '+977 9841-382910',
-        location: liveLoc.address || `${liveLoc.lat}, ${liveLoc.lng}`,
-        lat: liveLoc.lat,
-        lng: liveLoc.lng,
-        status: 'Active',
-        type: 'SOS Alert',
-        recipientsCount: guardians.length,
-      });
+      const newAlert =
+        await alertService.createAlert({
+          user:
+            currentUser?.name ||
+            "Shield User",
 
-      setAlerts((prev) => [newAlert, ...prev]);
+          userId:
+            currentUser?.id ||
+            "usr-101",
+
+          userPhone:
+            currentUser?.phone ||
+            "+977 9841-382910",
+
+          location:
+            liveLoc.address ||
+            `${liveLoc.lat}, ${liveLoc.lng}`,
+
+          lat: liveLoc.lat,
+          lng: liveLoc.lng,
+
+          status: "Active",
+          type: "SOS Alert",
+
+          recipientsCount:
+            guardians.length,
+        });
+
+      setAlerts((previous) => [
+        newAlert,
+        ...previous,
+      ]);
+
       setIsSOSOpen(true);
-    } catch (err) {
-      console.warn('Alert creation:', err.message);
-      setIsSOSOpen(true); // Open SOS alert modal anyway for immediate siren & dispatch
+
+    } catch (error) {
+      console.warn(
+        "Alert creation failed:",
+        error.message
+      );
+
+      // Still open SOS modal
+      setIsSOSOpen(true);
     }
   };
 
+  // ==========================================================
+  // PATH INFORMATION
+  // ==========================================================
+
+  const validPaths = [
+    "/",
+    "/emergency-numbers",
+    "/auth",
+    "/dashboard",
+    "/guardians",
+    "/live-location",
+    "/profile",
+    "/settings",
+    "/admin",
+  ];
+
+  const isKnownPath =
+    validPaths.includes(
+      location.pathname
+    );
+
+  // ==========================================================
+  // IS ADMIN PAGE?
+  // ==========================================================
+
+  const isAdminPage =
+    location.pathname === "/admin";
+
+  // ==========================================================
+  // RETURN
+  // ==========================================================
+
   return (
-    <div className="min-h-screen bg-[#fbf7f2] text-[#2d180c] font-sans flex flex-col justify-between selection:bg-[#9e6133] selection:text-white">
-      <div>
-        {/* Fixed Navbar */}
+    <div className="min-h-screen bg-[#fbf7f2] text-[#2d180c] font-sans flex flex-col">
+
+      {/* ======================================================
+          USER NAVBAR
+
+          IMPORTANT:
+          This navbar is NEVER rendered on /admin.
+      ====================================================== */}
+
+      {!isAdminPage && (
         <Navbar
           onTriggerSOS={handleTriggerSOS}
           currentUser={currentUser}
           onOpenAuthModal={handleOpenAuthModal}
           onLogout={handleLogout}
-          onOpenFakeCall={() => setIsFakeCallOpen(true)}
+          onOpenFakeCall={() =>
+            setIsFakeCallOpen(true)
+          }
         />
+      )}
 
-        {/* Page Routing */}
-        <main>
-          <Routes>
-            {/* Home Landing */}
-            <Route path="/" element={<Home onTriggerSOS={handleTriggerSOS} onOpenFakeCall={() => setIsFakeCallOpen(true)} />} />
+      {/* ======================================================
+          ROUTES
+      ====================================================== */}
 
-            {/* Public Helplines */}
-            <Route
-              path="/emergency-numbers"
-              element={<EmergencyNumbers />}
-            />
+      <main className="flex-1">
 
-            {/* Auth Login & Register Page */}
-            <Route
-              path="/auth"
-              element={
-                <Auth
-                  onLoginSuccess={handleLoginSuccess}
+        <Routes>
+
+          {/* ==================================================
+              HOME
+          ================================================== */}
+
+          <Route
+            path="/"
+            element={
+              <Home
+                onTriggerSOS={handleTriggerSOS}
+                onOpenFakeCall={() =>
+                  setIsFakeCallOpen(true)
+                }
+              />
+            }
+          />
+
+          {/* ==================================================
+              EMERGENCY NUMBERS
+          ================================================== */}
+
+          <Route
+            path="/emergency-numbers"
+            element={
+              <EmergencyNumbers />
+            }
+          />
+
+          {/* ==================================================
+              AUTH
+          ================================================== */}
+
+          <Route
+            path="/auth"
+            element={
+              <Auth
+                onLoginSuccess={
+                  handleLoginSuccess
+                }
+                currentUser={currentUser}
+                onLogout={handleLogout}
+              />
+            }
+          />
+
+          {/* ==================================================
+              USER DASHBOARD
+
+              ONLY USER
+          ================================================== */}
+
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                onOpenAuthModal={() =>
+                  handleOpenAuthModal("login")
+                }
+                allowedRole="user"
+                featureName="Safety Command Dashboard"
+              >
+                <Dashboard
+                  onTriggerSOS={
+                    handleTriggerSOS
+                  }
+                  guardians={guardians}
+                  alerts={alerts}
                   currentUser={currentUser}
-                  onLogout={handleLogout}
+                  onOpenFakeCall={() =>
+                    setIsFakeCallOpen(true)
+                  }
                 />
-              }
-            />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* User Dashboard */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute
+          {/* ==================================================
+              GUARDIANS
+
+              ONLY USER
+          ================================================== */}
+
+          <Route
+            path="/guardians"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                onOpenAuthModal={() =>
+                  handleOpenAuthModal("login")
+                }
+                allowedRole="user"
+                featureName="Guardian Contact Management"
+              >
+                <Guardians
+                  guardians={guardians}
+                  onAddGuardian={
+                    handleAddGuardian
+                  }
+                  onUpdateGuardian={
+                    handleUpdateGuardian
+                  }
+                  onDeleteGuardian={
+                    handleDeleteGuardian
+                  }
+                  onSetPrimaryGuardian={
+                    handleSetPrimaryGuardian
+                  }
+                />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ==================================================
+              LIVE LOCATION
+
+              ONLY USER
+          ================================================== */}
+
+          <Route
+            path="/live-location"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                onOpenAuthModal={() =>
+                  handleOpenAuthModal("login")
+                }
+                allowedRole="user"
+                featureName="Live Location Broadcast"
+              >
+                <LiveLocation
+                  guardians={guardians}
+                />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ==================================================
+              PROFILE
+
+              USER + ADMIN
+          ================================================== */}
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                onOpenAuthModal={() =>
+                  handleOpenAuthModal("login")
+                }
+                allowedRole={[
+                  "user",
+                  "admin",
+                ]}
+                featureName="Personal Safety Profile"
+              >
+                <UserProfile
                   currentUser={currentUser}
-                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                  allowedRole="user"
-                  featureName="Safety Command Dashboard"
-                >
-                  <Dashboard
-                    onTriggerSOS={handleTriggerSOS}
-                    guardians={guardians}
-                    alerts={alerts}
-                    currentUser={currentUser}
-                    onOpenFakeCall={() => setIsFakeCallOpen(true)}
-                  />
-                </ProtectedRoute>
-              }
-            />
+                  onUpdateProfile={
+                    handleUpdateProfile
+                  }
+                  alerts={alerts}
+                />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Guardians CRUD */}
-            <Route
-              path="/guardians"
-              element={
-                <ProtectedRoute
+          {/* ==================================================
+              SETTINGS
+
+              USER + ADMIN
+          ================================================== */}
+
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                onOpenAuthModal={() =>
+                  handleOpenAuthModal("login")
+                }
+                allowedRole={[
+                  "user",
+                  "admin",
+                ]}
+                featureName="Account Safety Settings"
+              >
+                <UserSettings
                   currentUser={currentUser}
-                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                  allowedRole="user"
-                  featureName="Guardian Contact Management"
-                >
-                  <Guardians
-                    guardians={guardians}
-                    onAddGuardian={handleAddGuardian}
-                    onUpdateGuardian={handleUpdateGuardian}
-                    onDeleteGuardian={handleDeleteGuardian}
-                    onSetPrimaryGuardian={handleSetPrimaryGuardian}
-                  />
-                </ProtectedRoute>
-              }
-            />
+                  onUpdateProfile={
+                    handleUpdateProfile
+                  }
+                />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Live Location */}
-            <Route
-              path="/live-location"
-              element={
-                <ProtectedRoute
-                  currentUser={currentUser}
-                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                  allowedRole="user"
-                  featureName="Live Location Broadcast"
-                >
-                  <LiveLocation guardians={guardians} />
-                </ProtectedRoute>
-              }
-            />
+          {/* ==================================================
+              ADMIN DASHBOARD
 
-            {/* Edit Profile */}
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute
-                  currentUser={currentUser}
-                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                  allowedRole={['user', 'admin']}
-                  featureName="Personal Safety Profile"
-                >
-                  <UserProfile
-                    currentUser={currentUser}
-                    onUpdateProfile={handleUpdateProfile}
-                    alerts={alerts}
-                  />
-                </ProtectedRoute>
-              }
-            />
+              ONLY ADMIN CAN ACCESS THIS PAGE.
 
-            {/* Settings */}
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute
-                  currentUser={currentUser}
-                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                  allowedRole={['user', 'admin']}
-                  featureName="Account Safety Settings"
-                >
-                  <UserSettings currentUser={currentUser} onUpdateProfile={handleUpdateProfile} />
-                </ProtectedRoute>
-              }
-            />
+              AdminDashboard contains AdminNavbar.
 
-            {/* Admin Control Center - Accessible without strict login wall */}
-            <Route
-              path="/admin"
-              element={
+              DO NOT PUT Navbar HERE.
+          ================================================== */}
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                onOpenAuthModal={() =>
+                  handleOpenAuthModal("login")
+                }
+                allowedRole="admin"
+                featureName="Admin Control Center"
+              >
                 <AdminDashboard
                   currentUser={currentUser}
                   usersList={usersList}
-                  onDeleteUser={handleDeleteUser}
-                  onToggleUserStatus={handleToggleUserStatus}
-                  onAddUser={handleAddUser}
+                  onDeleteUser={
+                    handleDeleteUser
+                  }
+                  onToggleUserStatus={
+                    handleToggleUserStatus
+                  }
+                  onAddUser={
+                    handleAddUser
+                  }
+                  onEditUser={
+                    handleEditUser
+                  }
                 />
-              }
-            />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Catch-all 404 Page Not Found */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
-      </div>
+          {/* ==================================================
+              404
+          ================================================== */}
 
-      {/* Global Footer (Hidden on 404 Not Found) */}
-      {isKnownPath && <Footer currentUser={currentUser} />}
+          <Route
+            path="*"
+            element={<NotFound />}
+          />
 
-      {/* Auth Modal Popup */}
+        </Routes>
+
+      </main>
+
+      {/* ======================================================
+          FOOTER
+
+          Do NOT show footer on admin page.
+      ====================================================== */}
+
+      {isKnownPath && !isAdminPage && (
+        <Footer
+          currentUser={currentUser}
+        />
+      )}
+
+      {/* ======================================================
+          AUTH MODAL
+      ====================================================== */}
+
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
+        onClose={() =>
+          setIsAuthModalOpen(false)
+        }
+        onLoginSuccess={
+          handleLoginSuccess
+        }
         initialTab={authModalTab}
       />
 
-      {/* SOS Emergency Broadcast Modal */}
+      {/* ======================================================
+          SOS MODAL
+      ====================================================== */}
+
       <SOSAlertModal
         isOpen={isSOSOpen}
-        onClose={() => setIsSOSOpen(false)}
+        onClose={() =>
+          setIsSOSOpen(false)
+        }
         guardians={guardians}
-        currentUserPin={currentUser?.emergencyPin || '9911'}
       />
 
-      {/* Misuse Prevention Cooldown Active Toast Banner */}
+      {/* ======================================================
+          SOS COOLDOWN
+      ====================================================== */}
+
       {cooldownError && (
-        <div className="fixed top-20 right-4 z-50 max-w-md bg-amber-900/90 text-amber-100 border border-amber-600 p-4 rounded-2xl shadow-2xl backdrop-blur-md flex items-start gap-3 animate-in slide-in-from-top-4">
-          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          <div className="space-y-1 text-xs">
-            <div className="font-extrabold uppercase tracking-wider text-amber-300">
+        <div className="fixed top-20 right-4 z-50 max-w-md bg-amber-900/90 text-amber-100 border border-amber-600 p-4 rounded-2xl shadow-2xl flex items-start gap-3">
+
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+
+          <div className="text-xs">
+
+            <div className="font-extrabold uppercase">
               SOS Cooldown Active
             </div>
-            <p className="font-medium">{cooldownError}</p>
+
+            <p>
+              {cooldownError}
+            </p>
+
           </div>
+
           <button
-            onClick={() => setCooldownError(null)}
-            className="p-1 hover:bg-amber-800 rounded-lg text-amber-300 ml-auto cursor-pointer"
+            onClick={() =>
+              setCooldownError(null)
+            }
+            className="p-1"
           >
             <X className="w-4 h-4" />
           </button>
+
         </div>
       )}
 
-      {/* Fake Call Escaper Modal */}
+      {/* ======================================================
+          FAKE CALL MODAL
+      ====================================================== */}
+
       <FakeCallModal
         isOpen={isFakeCallOpen}
-        onClose={() => setIsFakeCallOpen(false)}
+        onClose={() =>
+          setIsFakeCallOpen(false)
+        }
       />
+
     </div>
   );
 }
+
+
+// ==========================================================
+// APP
+// ==========================================================
 
 export default function App() {
   return (

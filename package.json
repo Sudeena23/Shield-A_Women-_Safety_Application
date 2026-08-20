@@ -1,0 +1,20 @@
+{
+  "name": "shield-women-safety",
+  "version": "1.0.0",
+  "description": "Shield - A Women Safety Application",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "server": "node backend/index.js",
+    "backend:dev": "npm run dev --prefix backend",
+    "seed": "node backend/seed.js",
+    "build": "npm run build --prefix frontend"
+  },
+  "keywords": [
+    "women-safety",
+    "sos",
+    "emergency-response",
+    "nepal"
+  ],
+  "author": "Shield Safety Team",
+  "license": "ISC"
+}

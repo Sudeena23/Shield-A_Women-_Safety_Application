@@ -28,7 +28,7 @@ export const GuardianCard = ({
       ) : (
         onSetPrimary && (
           <button
-            onClick={() => onSetPrimary(guardian.id)}
+            onClick={() => onSetPrimary(guardian.id || guardian._id)}
             className="absolute top-2 right-2 text-[#814a27]/60 hover:text-[#814a27] bg-[#f7f0e6] hover:bg-[#eee0ce] text-[10px] font-bold px-2 py-1 rounded-lg border border-[#eee0ce] transition-all cursor-pointer flex items-center gap-1"
             title="Mark as Primary"
           >
@@ -82,11 +82,10 @@ export const GuardianCard = ({
 
         <button
           onClick={handleTest}
-          className={`flex-1 text-xs font-bold py-2.5 px-3 rounded-xl border transition-all flex items-center justify-center gap-1 cursor-pointer ${
-            testSent
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-              : 'bg-[#f7f0e6] hover:bg-[#eee0ce] border-[#eee0ce] text-[#814a27]'
-          }`}
+          className={`flex-1 text-xs font-bold py-2.5 px-3 rounded-xl border transition-all flex items-center justify-center gap-1 cursor-pointer ${testSent
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            : 'bg-[#f7f0e6] hover:bg-[#eee0ce] border-[#eee0ce] text-[#814a27]'
+            }`}
         >
           {testSent ? (
             <>
@@ -111,7 +110,7 @@ export const GuardianCard = ({
         </button>
 
         <button
-          onClick={() => onDelete(guardian.id)}
+          onClick={() => onDelete(guardian.id || guardian._id)}
           className="p-2.5 rounded-xl border border-[#eee0ce] text-[#814a27]/60 hover:text-[#814a27] hover:bg-[#f7f0e6] transition-colors cursor-pointer"
           title="Delete Guardian"
           aria-label="Delete Guardian"

@@ -11,7 +11,6 @@ export const INITIAL_USERS = [
     phone: '+977 01-4228435',
     role: 'admin',
     status: 'Active',
-    emergencyPin: '9911',
     bloodGroup: 'O+',
     medicalNotes: 'Duty Control Dispatcher',
     registeredAt: '2025-01-10',
@@ -19,8 +18,8 @@ export const INITIAL_USERS = [
   },
   {
     id: 'usr-101',
-    name: 'Srijana Adhikari',
-    email: 'srijana.adhikari@example.com',
+    name: 'Sneha Sharma',
+    email: 'sneha.sharma@example.com',
     phone: '+977 9841-382910',
     role: 'user',
     status: 'Active',
@@ -35,7 +34,7 @@ export const INITIAL_USERS = [
 export const INITIAL_GUARDIANS = [
   {
     id: 'g1',
-    name: 'Sita Adhikari',
+    name: 'Priya Sharma',
     phone: '+977 9841-234567',
     relationship: 'Mother',
     isPrimary: true,
@@ -152,7 +151,7 @@ export const SAFE_LOCATIONS = [
   },
 ];
 
-export const EMERGENCY_NUMBERS = [
+export const EMERGENCY_NUMBERS= [
   {
     id: 'e1',
     title: 'Nepal Police Control Room',
@@ -351,7 +350,7 @@ export const LOCATION_SHARE_HISTORY = [
     id: 'lh-1',
     date: 'Yesterday at 9:30 PM',
     duration: '1 Hour',
-    recipients: ['Sita Adhikari (Mother)'],
+    recipients: ['Priya Sharma (Mother)'],
     status: 'Completed',
   },
 ];

@@ -19,12 +19,23 @@ const guardianSchema = new mongoose.Schema(
     },
 
     relationship: {
-      type: String
+      type: String,
+      default: "Friend"
     },
 
     isPrimary: {
       type: Boolean,
       default: false
+    },
+
+    avatarBg: {
+      type: String,
+      default: "bg-[#9e6133]"
+    },
+
+    status: {
+      type: String,
+      default: "Active"
     }
   },
   {

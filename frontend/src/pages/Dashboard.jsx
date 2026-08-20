@@ -144,7 +144,7 @@ export const Dashboard = ({
         />
 
         <p className="text-xs text-[#814a27]/80 font-medium max-w-md mt-8 leading-relaxed">
-          Pressing SOS dispatches live GPS coordinates, triggers optional loud siren alert, and broadcasts emergency SMS to your designated guardians.
+          Pressing SOS dispatches live GPS coordinates, triggers optional loud siren alert, and alerts all your designated guardians immediately.
         </p>
       </div>
 

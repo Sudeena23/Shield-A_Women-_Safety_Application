@@ -51,10 +51,12 @@ router.post("/", async (req, res) => {
 
     const newGuardian = await Guardian.create({
       user: req.userId,
-      name,
-      phone,
-      relationship,
-      isPrimary: !!isPrimary
+      name: name.trim(),
+      phone: phone.trim(),
+      relationship: relationship ? relationship.trim() : "Friend",
+      isPrimary: !!isPrimary,
+      avatarBg: req.body.avatarBg || "bg-[#9e6133]",
+      status: req.body.status || "Active"
     });
 
     res.status(201).json({

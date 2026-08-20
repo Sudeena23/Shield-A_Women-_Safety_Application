@@ -1,36 +1,157 @@
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import axios from "axios";
 
-const usersCollection = collection(db, 'users');
-const allUsers = async () => {
-  if (!auth.currentUser) return [];
-  const currentUser = await getDoc(doc(db, 'users', auth.currentUser.uid));
-  if (!currentUser.exists() || currentUser.data().role !== 'admin') return [];
-  return (await getDocs(usersCollection)).docs.map((item) => ({ id: item.id, ...item.data() }));
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_URL = `${BASE_URL}/admin/users`;
+
+const getToken = () => {
+  return localStorage.getItem("token");
 };
 
+const getHeaders = () => ({
+  Authorization: `Bearer ${getToken()}`,
+});
+
 export const userService = {
-  getUsers: allUsers,
+  // GET ALL USERS
+  getUsers: async () => {
+    const token = getToken();
+    if (!token) {
+      return [];
+    }
+
+    try {
+      const response = await axios.get(API_URL, {
+        headers: getHeaders(),
+      });
+
+      return response.data.users || [];
+    } catch (error) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        return [];
+      }
+      console.warn("Notice loading users:", error.message);
+      return [];
+    }
+  },
+
+  // GET USER BY ID
   getUserById: async (userId) => {
-    const snapshot = await getDoc(doc(db, 'users', userId));
-    return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+    try {
+      const response = await axios.get(
+        `${API_URL}/${userId}`,
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Error getting user:", error);
+
+      if (error.response?.status === 404) {
+        return null;
+      }
+
+      throw new Error(
+        error.response?.data?.message ||
+          "Failed to get user"
+      );
+    }
   },
+
+  // ACTIVATE / SUSPEND USER
   toggleUserStatus: async (userId) => {
-    const user = await userService.getUserById(userId);
-    if (!user) throw new Error('User not found.');
-    const status = user.status === 'Active' ? 'Suspended' : 'Active';
-    await updateDoc(doc(db, 'users', userId), { status });
-    return { ...user, status };
+    try {
+      const response = await axios.patch(
+        `${API_URL}/${userId}/suspend`,
+        {},
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      return response.data.user;
+    } catch (error) {
+      console.error(
+        "Error changing user status:",
+        error
+      );
+
+      throw new Error(
+        error.response?.data?.message ||
+          "Failed to change user status"
+      );
+    }
   },
+
+  // ADD USER
   addUser: async (userData) => {
-    if (!auth.currentUser) throw new Error('Sign in before adding a user profile.');
-    const id = userData.id || crypto.randomUUID();
-    const data = { ...userData, id, role: userData.role || 'user', status: 'Active', registeredAt: new Date().toISOString().split('T')[0] };
-    await setDoc(doc(db, 'users', id), data);
-    return data;
+    try {
+      const data = {
+        ...userData,
+        role: userData.role || "user",
+        status: "Active",
+      };
+
+      const response = await axios.post(
+        API_URL,
+        data,
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      return response.data.user;
+    } catch (error) {
+      console.error("Error adding user:", error);
+
+      throw new Error(
+        error.response?.data?.message ||
+          "Failed to add user"
+      );
+    }
   },
+
+  // UPDATE USER (Edit)
+  updateUser: async (userId, updatedFields) => {
+    try {
+      const response = await axios.patch(
+        `${API_URL}/${userId}`,
+        updatedFields,
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      return response.data.user;
+    } catch (error) {
+      console.error("Error updating user:", error);
+
+      throw new Error(
+        error.response?.data?.message ||
+          "Failed to update user"
+      );
+    }
+  },
+
+  // DELETE USER
   deleteUser: async (userId) => {
-    await deleteDoc(doc(db, 'users', userId));
-    return { success: true, id: userId };
+    try {
+      const response = await axios.delete(
+        `${API_URL}/${userId}`,
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting user:", error);
+
+      throw new Error(
+        error.response?.data?.message ||
+          "Failed to delete user"
+      );
+    }
   },
 };

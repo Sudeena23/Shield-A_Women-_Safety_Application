@@ -13,7 +13,6 @@ export const UserProfile = ({ currentUser, onUpdateProfile, alerts = [] }) => {
     phone: currentUser?.phone || '',
     bloodGroup: currentUser?.bloodGroup || 'O+',
     medicalNotes: currentUser?.medicalNotes || '',
-    emergencyPin: currentUser?.emergencyPin || '9911',
     address: currentUser?.address || 'Kathmandu, Nepal',
   });
 
@@ -57,14 +56,14 @@ export const UserProfile = ({ currentUser, onUpdateProfile, alerts = [] }) => {
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">{formData.name}</h1>
-            <p className="text-xs text-[#eee0ce]/80">{formData.email}</p>
+            <p className="text-xs text-[#eee0ce]/80">{formData.email} • {formData.phone || 'No phone'}</p>
           </div>
         </div>
 
         <div className="bg-[#1e1008] p-3.5 rounded-2xl border border-[#4a2b18] text-xs space-y-1 shrink-0">
-          <div className="text-[#eee0ce]/70 font-medium">SOS Deactivation PIN</div>
-          <div className="text-lg font-mono font-black text-[#cb9d75] flex items-center gap-1">
-            <Lock className="w-4 h-4 text-[#cb9d75]" /> {formData.emergencyPin}
+          <div className="text-[#eee0ce]/70 font-medium">Blood Group</div>
+          <div className="text-lg font-mono font-black text-rose-400 flex items-center gap-1">
+            <Heart className="w-4 h-4 text-rose-400 fill-rose-400" /> {formData.bloodGroup || 'O+'}
           </div>
         </div>
       </div>
@@ -182,23 +181,6 @@ export const UserProfile = ({ currentUser, onUpdateProfile, alerts = [] }) => {
                 <option value="AB-">AB-</option>
               </select>
             </div>
-          </div>
-
-          {/* Emergency PIN */}
-          <div>
-            <label className="block text-xs font-extrabold text-[#2d180c] uppercase tracking-wider mb-1">Emergency Deactivation PIN</label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-[#9e6133] absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                required
-                maxLength={4}
-                value={formData.emergencyPin}
-                onChange={(e) => setFormData({ ...formData, emergencyPin: e.target.value })}
-                className="w-full bg-[#fdfbf7] border border-[#eee0ce] rounded-xl pl-9 pr-3 py-2.5 text-xs font-mono font-bold text-[#2d180c] focus:outline-none focus:ring-2 focus:ring-[#9e6133]"
-              />
-            </div>
-            <p className="text-[10px] text-[#814a27]/70 mt-1">Default PIN is 9911. Entering 4321 triggers silent duress mode.</p>
           </div>
 
           {/* Address */}

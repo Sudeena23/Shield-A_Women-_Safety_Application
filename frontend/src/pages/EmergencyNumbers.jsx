@@ -7,13 +7,35 @@ export const EmergencyNumbers = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredNumbers = EMERGENCY_NUMBERS.filter((item) => {
+  // Load standard hotlines + any custom helplines registered by admin
+  const allNumbers = React.useMemo(() => {
+    const saved = localStorage.getItem("shield_registered_helplines");
+    const customList = saved ? JSON.parse(saved) : [];
+    
+    // Format custom list to match EmergencyCard requirements
+    const formattedCustom = customList.map((c) => ({
+      id: c.id,
+      title: c.title,
+      number: c.number,
+      category: c.category === 'Women & Children' ? 'Women' : c.category === 'Ambulance' ? 'Medical' : c.category,
+      description: `Official verified ${c.category} emergency dispatch helpline.`,
+      iconName: c.category === 'Ambulance' ? 'HeartPulse' : c.category === 'Fire Brigade' ? 'Flame' : 'PhoneCall',
+      is24x7: true,
+    }));
+
+    // Combine base numbers with custom ones (avoiding duplicate IDs)
+    const existingIds = new Set(EMERGENCY_NUMBERS.map((n) => n.id));
+    const uniqueCustom = formattedCustom.filter((c) => !existingIds.has(c.id));
+    return [...EMERGENCY_NUMBERS, ...uniqueCustom];
+  }, []);
+
+  const filteredNumbers = allNumbers.filter((item) => {
     const matchesCat = selectedCategory === 'All' || item.category === selectedCategory;
     const matchesSearch =
       searchQuery === '' ||
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.number.includes(searchQuery) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCat && matchesSearch;
   });
 
