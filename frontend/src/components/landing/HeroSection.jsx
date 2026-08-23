@@ -7,13 +7,19 @@ import { Shield, ArrowRight, Sparkles, CheckCircle2, Lock, HeartPulse, PhoneCall
  * Renders the top landing hero with pill badge, bold headline, primary action buttons,
  * overlapping user avatars with '10,000+ Protected' counter, and a featured safety illustration.
  */
-export const HeroSection = ({ onTriggerSOS, onOpenFakeCall }) => {
+export const HeroSection = ({ onTriggerSOS, onOpenFakeCall, currentUser }) => {
   const avatars = [
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
     'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=100&q=80',
     'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80',
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80',
   ];
+
+  const destinationPath = currentUser
+    ? currentUser.role === 'admin'
+      ? '/admin'
+      : '/dashboard'
+    : '/auth';
 
   return (
     <section className="relative pt-8 sm:pt-16 pb-12 overflow-hidden bg-gradient-to-b from-[#f7f0e6]/60 via-[#fdfbf7] to-[#fbf8f3] border-b border-[#eee0ce]">
@@ -46,10 +52,10 @@ export const HeroSection = ({ onTriggerSOS, onOpenFakeCall }) => {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
               <Link
-                to="/auth"
+                to={destinationPath}
                 className="w-full sm:w-auto bg-[#9e6133] hover:bg-[#814a27] text-white font-extrabold px-8 py-4 rounded-2xl shadow-xl shadow-[#9e6133]/25 active:translate-y-0.5 active:shadow-md transition-all flex items-center justify-center gap-2 text-base cursor-pointer btn-primary"
               >
-                <span>Get Started Free</span>
+                <span>{currentUser ? 'Go to My Dashboard' : 'Get Started Free'}</span>
                 <ArrowRight className="w-5 h-5 text-white" />
               </Link>
 

@@ -1,5 +1,5 @@
 /**
- * DATABASE SEED SCRIPT (100% Free & Noob-Friendly)
+ * DATABASE SEED SCRIPT 
  * ----------------------------------------------------
  * Seeds default administrator, test user, guardians,
  * sample SOS dispatches, broadcasts, and system settings.

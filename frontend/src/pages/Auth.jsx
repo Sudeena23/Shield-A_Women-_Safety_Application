@@ -225,52 +225,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
   };
 
   // ============================================================================
-  // IF USER IS ALREADY LOGGED IN
-  // ============================================================================
-  if (currentUser) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 bg-gradient-to-b from-[#232527] to-[#1a1b1d] text-white">
-        <div className="max-w-lg w-full bg-[#292b2e] rounded-3xl p-8 border border-[#3e4247] shadow-2xl space-y-6 text-center">
-          
-          {/* Avatar Icon */}
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#9e6133] to-[#d4833b] text-white mx-auto flex items-center justify-center shadow-lg shadow-[#9e6133]/30 border border-[#b86d29]/40">
-            <Shield className="w-10 h-10" />
-          </div>
-
-          <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#e8d5bf] bg-[#3d2715] px-3 py-1 rounded-full border border-[#8e4e13]">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Logged In Session
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-black text-white">{currentUser.name}</h1>
-            <p className="text-xs sm:text-sm text-[#b2a798]">{currentUser.email} • {currentUser.phone || 'No phone'}</p>
-            <p className="text-xs font-semibold text-[#cb9d75]">
-              Role: <span className="uppercase text-white">{currentUser.role || 'user'}</span> • Blood: <span className="text-white">{currentUser.bloodGroup || 'O+'}</span>
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-[#3e4247]">
-            <button
-              onClick={() => navigate(currentUser.role === 'admin' ? '/admin' : '/dashboard')}
-              className="w-full bg-[#8e4e13] hover:bg-[#a65c17] text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
-            >
-              <span>Go to {currentUser.role === 'admin' ? 'Admin Portal' : 'Safety Dashboard'}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={onLogout}
-              className="w-full bg-[#1f2123] hover:bg-[#2c2f32] text-[#d4833b] hover:text-white font-bold py-3 px-4 rounded-xl border border-[#3e4247] text-xs transition-all cursor-pointer"
-            >
-              Sign Out
-            </button>
-          </div>
-
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================================================
   // MAIN LOGIN & CREATE ACCOUNT SCREEN
   // ============================================================================
   return (

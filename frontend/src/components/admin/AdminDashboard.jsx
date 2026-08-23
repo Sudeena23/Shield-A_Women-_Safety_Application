@@ -1,187 +1,190 @@
-// AdminDashboard.jsx - Clean & Professional Operations Control Center
-import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
-import { 
-  ShieldAlert, 
-  Radio, 
-  Users, 
-  Send, 
-  MapPin, 
-  Activity, 
-  CheckCircle2, 
-  Phone, 
-  Clock, 
-  ExternalLink, 
-  ShieldCheck, 
-  Server, 
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  Users,
+  Shield,
+  Radio,
+  MapPin,
+  Send,
+  CheckCircle2,
   RefreshCw,
   BellRing,
-  AlertTriangle
+  Activity,
+  ShieldAlert,
+  ShieldCheck,
+  Phone,
+  Settings,
+  Sparkles,
 } from "lucide-react";
-
 import { alertService } from "../../services/alertService";
 import { adminService } from "../../services/adminService";
 import { AdminNavbar } from "./AdminNavbar";
 import { SOSDispatch } from "./SOSDispatch";
 import { UserData } from "./UserData";
-import { AdminLiveLocation } from "./AdminLiveLocation";
 import { HelplineRegister } from "./HelplineRegister";
 import { AdminSettings } from "./AdminSettings";
+import { AdminLiveLocation } from "./AdminLiveLocation";
 import { InteractiveMap } from "../InteractiveMap";
+import { SOSMiniMap } from "./SOSMiniMap";
 
 export const AdminDashboard = ({
-  currentUser,
   usersList = [],
+  currentUser,
   onDeleteUser,
   onToggleUserStatus,
   onAddUser,
   onEditUser,
+  onLogout,
 }) => {
-  const location = useLocation();
-  const navigate = useNavigate();
-
+  // Navigation State
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [navWidth, setNavWidth] = useState(256);
+
+  // Live Alerts & Dispatches State
   const [dispatches, setDispatches] = useState([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(true);
+
+  // Broadcast Messaging Form State
   const [broadcastTitle, setBroadcastTitle] = useState("");
   const [broadcastMessage, setBroadcastMessage] = useState("");
-  const [broadcastPriority, setBroadcastPriority] = useState("High");
+  const [broadcastPriority, setBroadcastPriority] = useState("Normal");
   const [broadcastSending, setBroadcastSending] = useState(false);
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
 
-  // Space for sidebar
-  const [navWidth, setNavWidth] = useState(256);
+  // ----------------------------------------------------
+  // Initial Fetch of Real System Dispatches & Alerts
+  // ----------------------------------------------------
+  const fetchLiveDispatches = async () => {
+    try {
+      setLoadingAlerts(true);
+      const alertsData = await alertService.getAlerts();
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    navigate(`/admin?tab=${tab}`, { replace: true });
+      if (Array.isArray(alertsData)) {
+        const mappedDispatches = alertsData.map((a, idx) => ({
+          id: a._id || a.id || `DISP-${8900 + idx}`,
+          victimName: a.victimName || a.user?.name || "Emergency Caller",
+          victimPhone:
+            a.victimPhone || a.user?.phone || "+977 9841-000000",
+          bloodGroup: a.bloodGroup || a.user?.bloodGroup || "O+",
+          medicalNotes:
+            a.medicalNotes ||
+            a.user?.medicalNotes ||
+            "No prior medical allergies logged",
+          location:
+            a.address ||
+            a.location ||
+            `${a.lat ? Number(a.lat).toFixed(4) : "27.7172"}, ${
+              a.lng ? Number(a.lng).toFixed(4) : "85.3240"
+            }`,
+          latitude: a.lat ? Number(a.lat) : 27.7172,
+          longitude: a.lng ? Number(a.lng) : 85.3240,
+          triggeredAt: a.createdAt || a.timestamp || new Date().toISOString(),
+          status: a.status || "Active",
+          type: a.type || "Emergency SOS Alert",
+          guardianCount: a.recipientsCount || 2,
+          duressActivated: Boolean(a.duressActivated),
+          ipLog: a.ipLog || "127.0.0.1",
+        }));
+
+        setDispatches(mappedDispatches);
+      }
+    } catch (err) {
+      console.warn("Dispatches initialized in local mode:", err.message);
+    } finally {
+      setLoadingAlerts(false);
+    }
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const tab = params.get("tab");
+    fetchLiveDispatches();
 
-    if (
-      [
-        "dashboard",
-        "dispatches",
-        "users",
-        "liveLocation",
-        "helplines",
-        "settings",
-      ].includes(tab)
-    ) {
-      setActiveTab(tab);
-    }
-  }, [location.search]);
-
-  // Load Real Alerts
-  useEffect(() => {
-    const loadAlerts = async () => {
-      try {
-        const alertsData = await alertService.getAlerts();
-
-        const mapped = alertsData.map((a, index) => ({
-          id: a._id || a.id || `DISP-${index + 1}`,
-          victimName: a.victimName || a.user?.name || "SOS User",
-          victimPhone: a.victimPhone || a.user?.phone || "N/A",
-          bloodGroup: a.bloodGroup || a.user?.bloodGroup || "N/A",
-          medicalNotes: a.medicalNotes || a.user?.medicalNotes || "None",
-          location: a.address || `${Number(a.lat || 27.7172).toFixed(4)}, ${Number(a.lng || 85.324).toFixed(4)}`,
-          triggeredAt: a.createdAt || new Date().toISOString(),
-          status: a.status || "Active",
-          type: a.type || "SOS Alert",
-          latitude: Number(a.lat || 27.7172),
-          longitude: Number(a.lng || 85.324),
-        }));
-
-        setDispatches(mapped);
-      } catch (error) {
-        console.error("Failed to load alerts:", error);
+    // Listen for tab switch events from parent / router
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam) {
+        setActiveTab(tabParam);
       }
     };
 
-    loadAlerts();
-
-    // Real-time SOS alert listener
-    import("../../services/socketService").then(({ socket, connectSocket }) => {
-      connectSocket();
-
-      const handleNewAlert = (newAlert) => {
-        setDispatches((prev) => [
-          {
-            id: newAlert._id || newAlert.id,
-            victimName: newAlert.victimName || "SOS User",
-            victimPhone: newAlert.victimPhone || "N/A",
-            bloodGroup: newAlert.bloodGroup || "N/A",
-            medicalNotes: newAlert.medicalNotes || "None",
-            location: newAlert.address || `${Number(newAlert.lat).toFixed(4)}, ${Number(newAlert.lng).toFixed(4)}`,
-            triggeredAt: newAlert.createdAt || new Date().toISOString(),
-            status: newAlert.status || "Active",
-            type: newAlert.type || "SOS Alert",
-            latitude: Number(newAlert.lat || 27.7172),
-            longitude: Number(newAlert.lng || 85.324),
-          },
-          ...prev,
-        ]);
-      };
-
-      const handleResolvedAlert = ({ alertId }) => {
-        setDispatches((prev) =>
-          prev.map((a) => (a.id === alertId ? { ...a, status: "Resolved" } : a))
-        );
-      };
-
-      socket.on("new-sos-alert", handleNewAlert);
-      socket.on("alert-resolved", handleResolvedAlert);
-
-      return () => {
-        socket.off("new-sos-alert", handleNewAlert);
-        socket.off("alert-resolved", handleResolvedAlert);
-      };
-    });
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  // Quick Dispatch Unit Action
-  const handleQuickDispatch = async (alertId) => {
+  // Update tab in URL history
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tabId);
+    window.history.pushState({}, "", url.toString());
+  };
+
+  // Quick Dispatch Handler
+  const handleQuickDispatch = async (dispatchId) => {
     try {
-      await alertService.updateAlertStatus(alertId, "Unit Dispatched");
       setDispatches((prev) =>
-        prev.map((d) => (d.id === alertId ? { ...d, status: "Unit Dispatched" } : d))
+        prev.map((item) =>
+          item.id === dispatchId
+            ? { ...item, status: "Unit Dispatched" }
+            : item
+        )
       );
-    } catch (e) {
-      console.error(e);
+      await alertService.updateAlertStatus(dispatchId, "Unit Dispatched");
+    } catch (err) {
+      console.error("Failed to update status:", err);
     }
   };
 
-  // Quick Resolve Action
-  const handleQuickResolve = async (alertId) => {
+  // Quick Resolve Handler
+  const handleQuickResolve = async (dispatchId) => {
     try {
-      await alertService.resolveAlert(alertId);
       setDispatches((prev) =>
-        prev.map((d) => (d.id === alertId ? { ...d, status: "Resolved" } : d))
+        prev.map((item) =>
+          item.id === dispatchId
+            ? { ...item, status: "Resolved" }
+            : item
+        )
       );
-    } catch (e) {
-      console.error(e);
+      await alertService.updateAlertStatus(dispatchId, "Resolved");
+    } catch (err) {
+      console.error("Failed to resolve alert:", err);
     }
   };
 
-  // Broadcast Alert Form Submit
+  // Broadcast Handler (Dispatches to all active clients via socket & backend)
   const handleSendBroadcast = async (e) => {
     e.preventDefault();
     if (!broadcastTitle.trim() || !broadcastMessage.trim()) return;
 
-    setBroadcastSending(true);
     try {
-      await adminService.sendBroadcast({
+      setBroadcastSending(true);
+      const payload = {
         title: broadcastTitle.trim(),
         message: broadcastMessage.trim(),
-        category: "Emergency Advisory",
         priority: broadcastPriority,
-      });
+        category: "Safety Advisory",
+        active: true,
+      };
 
-      setBroadcastSuccess(true);
+      await adminService.sendBroadcast(payload);
+
+      // Trigger socket event
+      try {
+        const { emitAlert } = await import("../../services/socketService");
+        emitAlert({
+          type: "emergency-broadcast",
+          title: payload.title,
+          message: payload.message,
+          priority: payload.priority,
+        });
+      } catch (sErr) {
+        console.warn("Socket broadcast emit skipped:", sErr.message);
+      }
+
       setBroadcastTitle("");
       setBroadcastMessage("");
+      setBroadcastPriority("Normal");
+      setBroadcastSuccess(true);
       setTimeout(() => setBroadcastSuccess(false), 3000);
     } catch (err) {
       console.error("Broadcast transmission error:", err);
@@ -193,21 +196,29 @@ export const AdminDashboard = ({
   // Admin Clearance Guard
   if (!currentUser || currentUser.role !== "admin") {
     return (
-      <div className="min-h-screen bg-[#1a0c05] flex items-center justify-center p-6 text-white">
-        <div className="bg-[#28150a] border border-red-900/60 rounded-3xl p-8 text-center max-w-md shadow-2xl">
-          <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-lg font-black text-white">
+      <div className="min-h-screen bg-[#fbf7f2] flex items-center justify-center p-6 text-[#2d180c]">
+        <div className="bg-white border border-[#eee0ce] rounded-3xl p-8 text-center max-w-md shadow-xl space-y-4">
+          <ShieldAlert className="w-12 h-12 text-red-600 mx-auto" />
+          <h2 className="text-xl font-black text-[#2d180c]">
             Admin Access Required
           </h2>
-          <p className="text-xs text-[#cb9d75]/80 mt-2">
+          <p className="text-xs text-[#814a27]/80">
             Please log in with an administrator account to access this portal.
           </p>
-          <Link
-            to="/auth"
-            className="inline-block mt-5 px-5 py-2.5 bg-[#9e6133] hover:bg-[#814a27] text-white rounded-xl text-xs font-bold transition-colors"
-          >
-            Go to Login
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <Link
+              to="/dashboard"
+              className="flex-1 px-4 py-3 bg-[#9e6133] hover:bg-[#814a27] text-white rounded-2xl text-xs font-extrabold uppercase tracking-wider transition-colors shadow-md text-center"
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/auth"
+              className="flex-1 px-4 py-3 bg-[#f7f0e6] hover:bg-[#eee0ce] text-[#2d180c] rounded-2xl text-xs font-extrabold uppercase tracking-wider transition-colors border border-[#eee0ce] text-center"
+            >
+              Go to Login
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -220,13 +231,15 @@ export const AdminDashboard = ({
   const resolvedCount = dispatches.filter((item) => item.status === "Resolved").length;
 
   return (
-    <div className="min-h-screen bg-[#140a04] text-white font-sans">
+    <div className="min-h-screen bg-[#fbf7f2] text-[#2d180c] font-sans">
       {/* SIDEBAR NAVIGATION */}
       <AdminNavbar
         activeTab={activeTab}
         onTabChange={handleTabChange}
         activeSOSCount={activeSOSCount}
         onWidthChange={setNavWidth}
+        user={currentUser}
+        onLogout={onLogout}
       />
 
       {/* MAIN ADMIN WORKSPACE */}
@@ -239,50 +252,50 @@ export const AdminDashboard = ({
           <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-200">
             
             {/* Header Status Bar */}
-            <div className="bg-[#231207] border border-[#3d2212] rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-white border border-[#eee0ce] rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
-                    Admin Operations Active
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    Operations Active
                   </span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black text-white mt-1">
+                <h1 className="text-2xl sm:text-3xl font-black text-[#2d180c] mt-2 tracking-tight">
                   Safety Command Dashboard
                 </h1>
-                <p className="text-xs text-[#cb9d75]/70">
-                  Real-time emergency monitoring, live incident dispatch, and user management.
+                <p className="text-xs text-[#814a27]/80 mt-1">
+                  Real-time emergency monitoring, live incident dispatch, and user security management.
                 </p>
               </div>
 
               <div className="flex items-center gap-3 self-start sm:self-auto">
-                <div className="bg-[#1a0c05] border border-[#3d2212] rounded-xl px-3.5 py-2 text-right">
-                  <div className="text-[10px] text-[#cb9d75]/60 uppercase font-bold">Admin Account</div>
-                  <div className="text-xs font-bold text-white">{currentUser?.name || "Administrator"}</div>
+                <div className="bg-[#fdfbf7] border border-[#eee0ce] rounded-2xl px-4 py-2.5 text-right shadow-xs">
+                  <div className="text-[10px] text-[#814a27]/70 uppercase font-extrabold">Logged Administrator</div>
+                  <div className="text-xs font-black text-[#2d180c]">{currentUser?.name || "Administrator"}</div>
                 </div>
               </div>
             </div>
 
             {/* Live Incident Warning Bar (Shows only when active SOS exists) */}
             {activeSOSCount > 0 && (
-              <div className="bg-red-950/70 border border-red-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+              <div className="bg-red-50 border-2 border-red-200 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-red-600 rounded-xl text-white">
-                    <ShieldAlert className="w-5 h-5 animate-pulse" />
+                  <div className="p-3 bg-red-600 rounded-2xl text-white shadow-sm">
+                    <ShieldAlert className="w-6 h-6 animate-pulse" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-red-200">
-                      {activeSOSCount} Active Emergency Alert{activeSOSCount === 1 ? '' : 's'} Requiring Action
+                    <div className="text-sm font-black text-red-900">
+                      {activeSOSCount} Active Emergency Alert{activeSOSCount === 1 ? '' : 's'} Requiring Response
                     </div>
-                    <div className="text-[11px] text-red-300/70">
-                      Review coordinates and dispatch emergency response units.
+                    <div className="text-xs text-red-800/80 mt-0.5">
+                      Review GPS coordinates on the dispatch mini-map and assign emergency units.
                     </div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => handleTabChange("dispatches")}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors cursor-pointer shrink-0"
+                  className="bg-red-600 hover:bg-red-700 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-md"
                 >
                   View SOS Dispatches &rarr;
                 </button>
@@ -293,44 +306,50 @@ export const AdminDashboard = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               
               {/* Card 1: Active Alerts */}
-              <div className="bg-[#231207] border border-[#3d2212] rounded-2xl p-5 space-y-2">
-                <div className="flex items-center justify-between text-[#cb9d75]">
-                  <span className="text-xs font-bold uppercase tracking-wider">Active SOS Alerts</span>
-                  <Radio className={`w-4 h-4 ${activeSOSCount > 0 ? 'text-red-500 animate-pulse' : 'text-[#cb9d75]/60'}`} />
+              <div className="bg-white border border-[#eee0ce] rounded-3xl p-6 space-y-2 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between text-[#814a27]">
+                  <span className="text-xs font-black uppercase tracking-wider">Active SOS Alerts</span>
+                  <div className={`p-2 rounded-xl ${activeSOSCount > 0 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-[#f7f0e6] text-[#9e6133]'}`}>
+                    <Radio className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="text-3xl font-black text-white font-mono">
+                <div className={`text-3xl font-black font-mono ${activeSOSCount > 0 ? 'text-red-600' : 'text-[#2d180c]'}`}>
                   {activeSOSCount}
                 </div>
-                <div className="text-[11px] text-[#cb9d75]/60">
-                  {activeSOSCount > 0 ? 'Requires responder dispatch' : 'No active emergencies'}
+                <div className="text-[11px] text-[#814a27]/70 font-medium">
+                  {activeSOSCount > 0 ? 'Urgent responder dispatch needed' : 'All areas currently clear'}
                 </div>
               </div>
 
               {/* Card 2: Registered Users */}
-              <div className="bg-[#231207] border border-[#3d2212] rounded-2xl p-5 space-y-2">
-                <div className="flex items-center justify-between text-[#cb9d75]">
-                  <span className="text-xs font-bold uppercase tracking-wider">Registered Users</span>
-                  <Users className="w-4 h-4 text-[#cb9d75]" />
+              <div className="bg-white border border-[#eee0ce] rounded-3xl p-6 space-y-2 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between text-[#814a27]">
+                  <span className="text-xs font-black uppercase tracking-wider">Registered Users</span>
+                  <div className="p-2 rounded-xl bg-[#f7f0e6] text-[#9e6133]">
+                    <Users className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="text-3xl font-black text-white font-mono">
+                <div className="text-3xl font-black text-[#2d180c] font-mono">
                   {usersList.length}
                 </div>
-                <div className="text-[11px] text-[#cb9d75]/60">
-                  Total registered user accounts
+                <div className="text-[11px] text-[#814a27]/70 font-medium">
+                  Total protected safety profiles
                 </div>
               </div>
 
               {/* Card 3: Resolved Incidents */}
-              <div className="bg-[#231207] border border-[#3d2212] rounded-2xl p-5 space-y-2">
-                <div className="flex items-center justify-between text-[#cb9d75]">
-                  <span className="text-xs font-bold uppercase tracking-wider">Resolved Incidents</span>
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <div className="bg-white border border-[#eee0ce] rounded-3xl p-6 space-y-2 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between text-[#814a27]">
+                  <span className="text-xs font-black uppercase tracking-wider">Resolved Incidents</span>
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="text-3xl font-black text-emerald-400 font-mono">
+                <div className="text-3xl font-black text-emerald-700 font-mono">
                   {resolvedCount}
                 </div>
-                <div className="text-[11px] text-[#cb9d75]/60">
-                  Handled and resolved safety cases
+                <div className="text-[11px] text-[#814a27]/70 font-medium">
+                  Safely handled emergency dispatches
                 </div>
               </div>
 
@@ -340,14 +359,14 @@ export const AdminDashboard = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Live Incident Map */}
-              <div className="lg:col-span-8 bg-[#231207] border border-[#3d2212] rounded-2xl p-5 space-y-3">
+              <div className="lg:col-span-8 bg-white border border-[#eee0ce] rounded-3xl p-6 space-y-3 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-red-500" /> Live Incident Map
+                  <h3 className="text-sm font-black text-[#2d180c] flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-red-600" /> Live Incident Map
                   </h3>
                   <button
                     onClick={() => handleTabChange("liveLocation")}
-                    className="text-xs text-[#cb9d75] hover:text-white font-bold cursor-pointer"
+                    className="text-xs text-[#9e6133] hover:text-[#814a27] font-bold cursor-pointer transition-colors"
                   >
                     Full Radar View &rarr;
                   </button>
@@ -371,48 +390,48 @@ export const AdminDashboard = ({
               </div>
 
               {/* Public Broadcast Sender */}
-              <div className="lg:col-span-4 bg-[#231207] border border-[#3d2212] rounded-2xl p-5 flex flex-col justify-between space-y-4">
+              <div className="lg:col-span-4 bg-white border border-[#eee0ce] rounded-3xl p-6 flex flex-col justify-between space-y-4 shadow-sm">
                 <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-[#3d2212] pb-2">
-                    <BellRing className="w-4 h-4 text-[#cb9d75]" /> Public Safety Broadcast
+                  <h3 className="text-sm font-black text-[#2d180c] flex items-center gap-2 border-b border-[#eee0ce] pb-3">
+                    <BellRing className="w-4 h-4 text-[#9e6133]" /> Public Safety Broadcast
                   </h3>
-                  <p className="text-[11px] text-[#cb9d75]/70 mt-2">
-                    Send immediate safety notices directly to all connected users.
+                  <p className="text-[11px] text-[#814a27]/80 mt-2">
+                    Broadcast instant safety alerts directly to all active user devices.
                   </p>
 
                   {broadcastSuccess && (
-                    <div className="mt-2 bg-emerald-950/80 border border-emerald-800 text-emerald-300 p-2 rounded-xl text-xs font-bold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Broadcast sent successfully!</span>
+                    <div className="mt-2.5 bg-emerald-50 border border-emerald-200 text-emerald-900 p-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Broadcast dispatched successfully!</span>
                     </div>
                   )}
 
-                  <form onSubmit={handleSendBroadcast} className="space-y-2.5 mt-3">
+                  <form onSubmit={handleSendBroadcast} className="space-y-3 mt-3">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-[#cb9d75] mb-1">
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#2d180c] mb-1">
                         Title
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Safety Advisory"
+                        placeholder="e.g. Weather / Safety Advisory"
                         value={broadcastTitle}
                         onChange={(e) => setBroadcastTitle(e.target.value)}
-                        className="w-full bg-[#1a0c05] border border-[#3d2212] rounded-xl px-3 py-2 text-xs text-white placeholder-[#cb9d75]/40 focus:outline-none focus:border-[#cb9d75]"
+                        className="w-full bg-[#fdfbf7] border border-[#eee0ce] rounded-xl px-3 py-2 text-xs font-bold text-[#2d180c] placeholder-[#814a27]/40 focus:outline-none focus:ring-2 focus:ring-[#9e6133]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-[#cb9d75] mb-1">
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#2d180c] mb-1">
                         Message
                       </label>
                       <textarea
                         required
                         rows={3}
-                        placeholder="Enter notice details for all users..."
+                        placeholder="Enter notice content for all users..."
                         value={broadcastMessage}
                         onChange={(e) => setBroadcastMessage(e.target.value)}
-                        className="w-full bg-[#1a0c05] border border-[#3d2212] rounded-xl p-2.5 text-xs text-white placeholder-[#cb9d75]/40 focus:outline-none focus:border-[#cb9d75]"
+                        className="w-full bg-[#fdfbf7] border border-[#eee0ce] rounded-xl p-2.5 text-xs font-bold text-[#2d180c] placeholder-[#814a27]/40 focus:outline-none focus:ring-2 focus:ring-[#9e6133]"
                       />
                     </div>
 
@@ -422,12 +441,12 @@ export const AdminDashboard = ({
                           key={lvl}
                           type="button"
                           onClick={() => setBroadcastPriority(lvl)}
-                          className={`flex-1 py-1 rounded-lg text-[10px] font-bold uppercase transition cursor-pointer ${
+                          className={`flex-1 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition cursor-pointer border ${
                             broadcastPriority === lvl
                               ? lvl === "Critical"
-                                ? "bg-red-600 text-white"
-                                : "bg-[#9e6133] text-white"
-                              : "bg-[#1a0c05] text-[#cb9d75]/60 border border-[#3d2212]"
+                                ? "bg-red-600 text-white border-red-600 shadow-xs"
+                                : "bg-[#9e6133] text-white border-[#9e6133] shadow-xs"
+                              : "bg-[#fdfbf7] text-[#814a27] border-[#eee0ce] hover:bg-[#f7f0e6]"
                           }`}
                         >
                           {lvl}
@@ -438,10 +457,10 @@ export const AdminDashboard = ({
                     <button
                       type="submit"
                       disabled={broadcastSending}
-                      className="w-full bg-[#9e6133] hover:bg-[#814a27] text-white font-bold py-2 px-3 rounded-xl text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 mt-2"
+                      className="w-full bg-[#9e6133] hover:bg-[#814a27] text-white font-extrabold py-2.5 px-3 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#9e6133]/25 disabled:opacity-50 mt-2"
                     >
                       {broadcastSending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                      <span>{broadcastSending ? "Sending..." : "Send Broadcast"}</span>
+                      <span>{broadcastSending ? "Sending..." : "Dispatch Broadcast"}</span>
                     </button>
                   </form>
                 </div>
@@ -449,108 +468,102 @@ export const AdminDashboard = ({
 
             </div>
 
-            {/* Recent SOS Incidents Table */}
-            <div className="bg-[#231207] border border-[#3d2212] rounded-2xl p-5 space-y-3">
-              <div className="flex items-center justify-between border-b border-[#3d2212] pb-3">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-red-500" /> Recent SOS Alerts ({dispatches.length})
-                </h3>
+            {/* Recent SOS Incidents Section */}
+            <div className="bg-white border border-[#eee0ce] rounded-3xl p-6 space-y-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#eee0ce] pb-3">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-black text-[#2d180c] flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-red-600" /> Recent Emergency Alerts ({dispatches.length})
+                  </h3>
+                </div>
 
-                <button
-                  onClick={() => handleTabChange("dispatches")}
-                  className="text-xs text-[#cb9d75] hover:text-white font-bold cursor-pointer"
-                >
-                  Manage All Dispatches &rarr;
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleTabChange("dispatches")}
+                    className="text-xs text-[#9e6133] hover:text-[#814a27] font-bold cursor-pointer transition-colors"
+                  >
+                    Manage All Dispatches &rarr;
+                  </button>
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-[#1a0c05] border-b border-[#3d2212] text-[#cb9d75]/70">
-                    <tr>
-                      <th className="px-3.5 py-2.5 text-left font-bold uppercase tracking-wider">User</th>
-                      <th className="px-3.5 py-2.5 text-left font-bold uppercase tracking-wider">Location</th>
-                      <th className="px-3.5 py-2.5 text-left font-bold uppercase tracking-wider">Time</th>
-                      <th className="px-3.5 py-2.5 text-left font-bold uppercase tracking-wider">Status</th>
-                      <th className="px-3.5 py-2.5 text-right font-bold uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dispatches.slice(0, 5).map((d) => {
-                      const isAlert = d.status === "Active";
-                      const isDispatched = d.status === "Unit Dispatched";
+              {/* Table / Mini-Map Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {dispatches.slice(0, 3).map((d) => {
+                  const isAlert = d.status === "Active";
+                  const isDispatched = d.status === "Unit Dispatched";
 
-                      return (
-                        <tr key={d.id} className="border-b border-[#3d2212] hover:bg-[#1a0c05]/60 transition-colors">
-                          <td className="px-3.5 py-3 font-bold text-white">
-                            <div>{d.victimName}</div>
-                            <div className="text-[10px] text-[#cb9d75]/60 font-mono">{d.victimPhone} • Blood: {d.bloodGroup}</div>
-                          </td>
+                  return (
+                    <div
+                      key={d.id}
+                      className={`bg-[#fdfbf7] border rounded-2xl p-4 space-y-3 shadow-xs flex flex-col justify-between hover:border-[#cb9d75] transition-colors ${
+                        isAlert ? "border-red-300 ring-1 ring-red-200" : isDispatched ? "border-amber-300" : "border-[#eee0ce]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 border-b border-[#eee0ce] pb-2.5">
+                        <div>
+                          <div className="text-xs font-black text-[#2d180c]">{d.victimName}</div>
+                          <div className="text-[10px] text-[#814a27]/80 font-mono mt-0.5">
+                            {d.victimPhone} • Blood: <span className="font-bold text-rose-600">{d.bloodGroup}</span>
+                          </div>
+                        </div>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border ${
+                            isAlert
+                              ? "bg-red-50 text-red-700 border-red-200 animate-pulse"
+                              : isDispatched
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          }`}
+                        >
+                          {d.status}
+                        </span>
+                      </div>
 
-                          <td className="px-3.5 py-3 text-[#cb9d75]">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-red-400 shrink-0" />
-                              <span className="truncate max-w-xs">{d.location}</span>
-                            </div>
-                          </td>
+                      {/* Interactive Mini-Map */}
+                      <SOSMiniMap
+                        latitude={d.latitude}
+                        longitude={d.longitude}
+                        locationName={d.location}
+                        victimName={d.victimName}
+                        status={d.status}
+                        height="140px"
+                        zoom={15}
+                      />
 
-                          <td className="px-3.5 py-3 text-[#cb9d75]/70 font-mono text-[11px]">
-                            {new Date(d.triggeredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </td>
+                      <div className="flex items-center justify-between pt-1 gap-2">
+                        <div className="text-[10px] text-[#814a27]/60 font-mono font-medium">
+                          {new Date(d.triggeredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
 
-                          <td className="px-3.5 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
-                              isAlert
-                                ? "bg-red-950 text-red-300 border-red-800"
-                                : isDispatched
-                                ? "bg-amber-950 text-amber-300 border-amber-800"
-                                : "bg-emerald-950 text-emerald-300 border-emerald-800"
-                            }`}>
-                              {d.status}
-                            </span>
-                          </td>
+                        <div className="flex items-center gap-1.5">
+                          {isAlert && (
+                            <button
+                              onClick={() => handleQuickDispatch(d.id)}
+                              className="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition cursor-pointer shadow-xs"
+                            >
+                              Dispatch
+                            </button>
+                          )}
 
-                          <td className="px-3.5 py-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {isAlert && (
-                                <button
-                                  onClick={() => handleQuickDispatch(d.id)}
-                                  className="bg-amber-600 hover:bg-amber-700 text-white px-2 py-1 rounded text-[10px] font-bold uppercase transition cursor-pointer"
-                                >
-                                  Dispatch
-                                </button>
-                              )}
-
-                              {d.status !== "Resolved" && (
-                                <button
-                                  onClick={() => handleQuickResolve(d.id)}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-[10px] font-bold uppercase transition cursor-pointer"
-                                >
-                                  Resolve
-                                </button>
-                              )}
-
-                              <a
-                                href={`https://www.google.com/maps?q=${d.latitude},${d.longitude}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1 text-[#cb9d75] hover:text-white bg-[#1a0c05] border border-[#3d2212] rounded transition"
-                                title="Open in Google Maps"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </a>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          {d.status !== "Resolved" && (
+                            <button
+                              onClick={() => handleQuickResolve(d.id)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition cursor-pointer shadow-xs"
+                            >
+                              Resolve
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {dispatches.length === 0 && (
-                <div className="text-center py-6 text-[#cb9d75]/50 text-xs">
-                  No SOS alerts recorded yet.
+                <div className="text-center py-8 text-[#814a27]/50 text-xs font-medium">
+                  No SOS alerts recorded yet. All users currently safe.
                 </div>
               )}
             </div>

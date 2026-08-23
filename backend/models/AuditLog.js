@@ -1,9 +1,7 @@
 /**
- * AUDIT LOG MODEL (Noob-Friendly & 100% Free)
- * ----------------------------------------------------
+ *
  * Records important actions in the app (like when someone
  * sends a broadcast, changes settings, or logs in).
- * ----------------------------------------------------
  */
 import mongoose from "mongoose";
 

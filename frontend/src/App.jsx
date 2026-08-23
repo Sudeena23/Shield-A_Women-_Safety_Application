@@ -61,6 +61,7 @@ function MainLayout() {
   const [alerts, setAlerts] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   // =========================
   // AUTH MODAL
@@ -131,6 +132,8 @@ function MainLayout() {
         }
       } catch (error) {
         console.warn("Application initialized in guest mode:", error.message);
+      } finally {
+        setIsAuthLoading(false);
       }
     };
 
@@ -314,16 +317,23 @@ function MainLayout() {
 
       setCurrentUser(saved);
 
-      const updatedUsers =
-        await userService.getUsers();
+      if (saved && saved.role === "admin") {
+        try {
+          const updatedUsers =
+            await userService.getUsers();
+          setUsersList(updatedUsers || []);
+        } catch (e) {
+          // ignore admin list fetch failure
+        }
+      }
 
-      setUsersList(updatedUsers);
-
+      return saved;
     } catch (error) {
       console.error(
         "Failed to update profile:",
         error
       );
+      throw error;
     }
   };
 
@@ -506,7 +516,10 @@ function MainLayout() {
   // ==========================================================
 
   const isAdminPage =
-    location.pathname === "/admin";
+    location.pathname === "/admin" || location.pathname.startsWith("/admin");
+
+  const isLandingPage =
+    location.pathname === "/";
 
   // ==========================================================
   // RETURN
@@ -519,10 +532,10 @@ function MainLayout() {
           USER NAVBAR
 
           IMPORTANT:
-          This navbar is NEVER rendered on /admin.
+          This navbar is NEVER rendered on /admin or / (landing page).
       ====================================================== */}
 
-      {!isAdminPage && (
+      {!isAdminPage && !isLandingPage && (
         <Navbar
           onTriggerSOS={handleTriggerSOS}
           currentUser={currentUser}
@@ -550,7 +563,12 @@ function MainLayout() {
             path="/"
             element={
               <Home
-                onTriggerSOS={handleTriggerSOS}
+                onTriggerSOS={
+                  handleTriggerSOS
+                }
+                guardians={guardians}
+                alerts={alerts}
+                currentUser={currentUser}
                 onOpenFakeCall={() =>
                   setIsFakeCallOpen(true)
                 }
@@ -565,7 +583,9 @@ function MainLayout() {
           <Route
             path="/emergency-numbers"
             element={
-              <EmergencyNumbers />
+              <EmergencyNumbers
+                currentUser={currentUser}
+              />
             }
           />
 
@@ -589,7 +609,7 @@ function MainLayout() {
           {/* ==================================================
               USER DASHBOARD
 
-              ONLY USER
+              USER + ADMIN
           ================================================== */}
 
           <Route
@@ -597,10 +617,18 @@ function MainLayout() {
             element={
               <ProtectedRoute
                 currentUser={currentUser}
+                authLoading={isAuthLoading}
                 onOpenAuthModal={() =>
                   handleOpenAuthModal("login")
                 }
-                allowedRole="user"
+                onLoginSuccess={
+                  handleLoginSuccess
+                }
+                onLogout={handleLogout}
+                allowedRole={[
+                  "user",
+                  "admin",
+                ]}
                 featureName="Safety Command Dashboard"
               >
                 <Dashboard
@@ -621,7 +649,7 @@ function MainLayout() {
           {/* ==================================================
               GUARDIANS
 
-              ONLY USER
+              USER + ADMIN
           ================================================== */}
 
           <Route
@@ -629,10 +657,18 @@ function MainLayout() {
             element={
               <ProtectedRoute
                 currentUser={currentUser}
+                authLoading={isAuthLoading}
                 onOpenAuthModal={() =>
                   handleOpenAuthModal("login")
                 }
-                allowedRole="user"
+                onLoginSuccess={
+                  handleLoginSuccess
+                }
+                onLogout={handleLogout}
+                allowedRole={[
+                  "user",
+                  "admin",
+                ]}
                 featureName="Guardian Contact Management"
               >
                 <Guardians
@@ -657,7 +693,7 @@ function MainLayout() {
           {/* ==================================================
               LIVE LOCATION
 
-              ONLY USER
+              USER + ADMIN
           ================================================== */}
 
           <Route
@@ -665,10 +701,18 @@ function MainLayout() {
             element={
               <ProtectedRoute
                 currentUser={currentUser}
+                authLoading={isAuthLoading}
                 onOpenAuthModal={() =>
                   handleOpenAuthModal("login")
                 }
-                allowedRole="user"
+                onLoginSuccess={
+                  handleLoginSuccess
+                }
+                onLogout={handleLogout}
+                allowedRole={[
+                  "user",
+                  "admin",
+                ]}
                 featureName="Live Location Broadcast"
               >
                 <LiveLocation
@@ -689,9 +733,14 @@ function MainLayout() {
             element={
               <ProtectedRoute
                 currentUser={currentUser}
+                authLoading={isAuthLoading}
                 onOpenAuthModal={() =>
                   handleOpenAuthModal("login")
                 }
+                onLoginSuccess={
+                  handleLoginSuccess
+                }
+                onLogout={handleLogout}
                 allowedRole={[
                   "user",
                   "admin",
@@ -720,9 +769,14 @@ function MainLayout() {
             element={
               <ProtectedRoute
                 currentUser={currentUser}
+                authLoading={isAuthLoading}
                 onOpenAuthModal={() =>
                   handleOpenAuthModal("login")
                 }
+                onLoginSuccess={
+                  handleLoginSuccess
+                }
+                onLogout={handleLogout}
                 allowedRole={[
                   "user",
                   "admin",
@@ -733,6 +787,9 @@ function MainLayout() {
                   currentUser={currentUser}
                   onUpdateProfile={
                     handleUpdateProfile
+                  }
+                  onOpenFakeCall={() =>
+                    setIsFakeCallOpen(true)
                   }
                 />
               </ProtectedRoute>
@@ -754,9 +811,14 @@ function MainLayout() {
             element={
               <ProtectedRoute
                 currentUser={currentUser}
+                authLoading={isAuthLoading}
                 onOpenAuthModal={() =>
                   handleOpenAuthModal("login")
                 }
+                onLoginSuccess={
+                  handleLoginSuccess
+                }
+                onLogout={handleLogout}
                 allowedRole="admin"
                 featureName="Admin Control Center"
               >
@@ -775,6 +837,7 @@ function MainLayout() {
                   onEditUser={
                     handleEditUser
                   }
+                  onLogout={handleLogout}
                 />
               </ProtectedRoute>
             }

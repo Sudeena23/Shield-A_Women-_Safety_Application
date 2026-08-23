@@ -1,9 +1,4 @@
-/**
- * ----------------------------------------------------
- * Stores emergency broadcast announcements sent by admins
- * to all users via free WebSockets.
- * ----------------------------------------------------
- */
+
 import mongoose from "mongoose";
 
 const broadcastSchema = new mongoose.Schema(
@@ -22,18 +17,6 @@ const broadcastSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Category of warning
-    category: {
-      type: String,
-      enum: [
-        "Severe Weather",
-        "Security Advisory",
-        "Curfew Alert",
-        "System Notice",
-        "Hazard Zone",
-      ],
-      default: "Security Advisory",
-    },
 
     // Priority level: Normal, High, or Critical
     priority: {
@@ -42,16 +25,10 @@ const broadcastSchema = new mongoose.Schema(
       default: "Normal",
     },
 
-    // Active status
-    active: {
-      type: Boolean,
-      default: true,
-    },
 
     // Who sent the alert
     sentBy: {
       type: String,
-      default: "Central Dispatch",
     },
 
     // Number of users who received the alert

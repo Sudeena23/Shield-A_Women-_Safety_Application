@@ -134,4 +134,31 @@ export const authService = {
       );
     }
   },
+
+  // CHANGE PASSWORD
+  changePassword: async (currentPassword, newPassword) => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("You must be logged in.");
+    }
+
+    try {
+      const response = await axios.put(
+        `${API_URL}/change-password`,
+        { currentPassword, newPassword },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.message || "Failed to change password"
+      );
+    }
+  },
 };

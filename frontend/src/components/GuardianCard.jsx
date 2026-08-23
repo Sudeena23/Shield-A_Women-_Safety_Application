@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, Edit3, Trash2, Heart, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Phone, Edit3, Trash2, Heart, ShieldCheck, CheckCircle2, RefreshCw } from 'lucide-react';
 
 export const GuardianCard = ({
   guardian,
@@ -8,14 +8,23 @@ export const GuardianCard = ({
   onTestAlert,
   onSetPrimary,
 }) => {
+  const [isSending, setIsSending] = useState(false);
   const [testSent, setTestSent] = useState(false);
 
-  const handleTest = () => {
-    if (onTestAlert) {
-      onTestAlert(guardian);
+  const handleTest = async () => {
+    if (isSending) return;
+    setIsSending(true);
+    try {
+      if (onTestAlert) {
+        await onTestAlert(guardian);
+      }
+      setTestSent(true);
+      setTimeout(() => setTestSent(false), 4000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSending(false);
     }
-    setTestSent(true);
-    setTimeout(() => setTestSent(false), 3000);
   };
 
   return (
@@ -61,12 +70,22 @@ export const GuardianCard = ({
           </div>
         </div>
 
-        <div className="bg-[#fdfbf7] border border-[#eee0ce] rounded-xl p-3 mb-4 space-y-1">
-          <div className="text-[11px] text-[#814a27]/60 font-medium uppercase tracking-wider">Contact Line</div>
-          <div className="text-sm font-extrabold text-[#2d180c] font-mono flex items-center gap-2">
-            <Phone className="w-3.5 h-3.5 text-[#814a27]" />
-            {guardian.phone}
+        <div className="bg-[#fdfbf7] border border-[#eee0ce] rounded-xl p-3 mb-4 space-y-2">
+          <div>
+            <div className="text-[10px] text-[#814a27]/60 font-black uppercase tracking-wider">Contact Phone</div>
+            <div className="text-sm font-black text-[#2d180c] font-mono flex items-center gap-1.5 mt-0.5">
+              <Phone className="w-3.5 h-3.5 text-[#9e6133]" />
+              {guardian.phone}
+            </div>
           </div>
+          {guardian.email && (
+            <div className="border-t border-[#eee0ce] pt-1.5">
+              <div className="text-[10px] text-[#814a27]/60 font-black uppercase tracking-wider">Emergency Email</div>
+              <div className="text-xs font-bold text-[#9e6133] truncate mt-0.5">
+                {guardian.email}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -82,20 +101,26 @@ export const GuardianCard = ({
 
         <button
           onClick={handleTest}
-          className={`flex-1 text-xs font-bold py-2.5 px-3 rounded-xl border transition-all flex items-center justify-center gap-1 cursor-pointer ${testSent
+          disabled={isSending}
+          className={`flex-1 text-xs font-bold py-2.5 px-3 rounded-xl border transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-60 ${testSent
             ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
             : 'bg-[#f7f0e6] hover:bg-[#eee0ce] border-[#eee0ce] text-[#814a27]'
             }`}
         >
-          {testSent ? (
+          {isSending ? (
+            <>
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#9e6133]" />
+              <span>Sending...</span>
+            </>
+          ) : testSent ? (
             <>
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              Alert Sent!
+              <span>Alert Sent!</span>
             </>
           ) : (
             <>
               <ShieldCheck className="w-3.5 h-3.5 text-[#814a27]" />
-              Test Alert
+              <span>Test Alert</span>
             </>
           )}
         </button>

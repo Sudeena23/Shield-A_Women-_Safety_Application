@@ -1,10 +1,6 @@
 /**
- * DATABASE CONNECTION (100% Free & Noob-Friendly)
- * ----------------------------------------------------
+ * DATABASE CONNECTION 
  * Connects to MongoDB (local or MongoDB Atlas).
- * If MongoDB is offline, it logs a clear beginner tip
- * instead of crashing the whole server.
- * ----------------------------------------------------
  */
 import mongoose from "mongoose";
 
