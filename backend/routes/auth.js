@@ -11,7 +11,6 @@ const JWT_SECRET = process.env.JWT_SECRET || "ShieldSafetyApp_2026_SecureKey_9xK
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: "30d" });
 };
-// POST /api/auth/register
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password, phone, emergencyPin, bloodGroup, medicalNotes } = req.body;
@@ -47,14 +46,17 @@ router.post("/register", async (req, res) => {
       success: true,
       token,
       user: {
+        _id: newUser._id,
         id: newUser._id,
         name: newUser.name,
         email: newUser.email,
-        phone: newUser.phone,
+        phone: newUser.phone || "",
         role: newUser.role,
         emergencyPin: newUser.emergencyPin,
         bloodGroup: newUser.bloodGroup,
         medicalNotes: newUser.medicalNotes,
+        address: newUser.address,
+        settings: newUser.settings,
         status: newUser.status,
       },
     });
@@ -62,8 +64,6 @@ router.post("/register", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
-// POST /api/auth/login
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -90,14 +90,17 @@ router.post("/login", async (req, res) => {
       success: true,
       token,
       user: {
+        _id: user._id,
         id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone,
+        phone: user.phone || "",
         role: user.role,
         emergencyPin: user.emergencyPin,
         bloodGroup: user.bloodGroup,
         medicalNotes: user.medicalNotes,
+        address: user.address,
+        settings: user.settings,
         status: user.status,
       },
     });
@@ -105,8 +108,6 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
-// GET /api/auth/me
 router.get("/me", protect, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select("-password");
@@ -118,11 +119,17 @@ router.get("/me", protect, async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
-// PUT /api/auth/me or /api/auth/profile/:id
 const handleUpdateProfile = async (req, res) => {
   try {
-    const allowedFields = ["name", "phone", "emergencyPin", "bloodGroup", "medicalNotes"];
+    const allowedFields = [
+      "name",
+      "phone",
+      "emergencyPin",
+      "bloodGroup",
+      "medicalNotes",
+      "address",
+      "settings"
+    ];
     const updates = {};
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -149,6 +156,51 @@ const handleUpdateProfile = async (req, res) => {
 
 router.put("/me", protect, handleUpdateProfile);
 router.put("/profile/:id", protect, handleUpdateProfile);
+router.put("/change-password", protect, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
 
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required"
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters"
+      });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Incorrect current password"
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Password changed successfully"
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 export default router;

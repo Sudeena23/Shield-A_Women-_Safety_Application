@@ -16,11 +16,6 @@ import {
   HeartPulse,
   RefreshCw
 } from 'lucide-react';
-
-/**
- * AuthModal Component
- * Quick modal dialog for user Login & Create Account
- */
 export const AuthModal = ({
   isOpen,
   onClose,
@@ -31,29 +26,23 @@ export const AuthModal = ({
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-
   useEffect(() => {
     if (isOpen) {
       setIsLoginTab(initialTab === 'login');
       setErrorMessage(null);
     }
   }, [isOpen, initialTab]);
-
-  // Form Fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [bloodGroup, setBloodGroup] = useState('O+');
-
   if (!isOpen) return null;
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage(null);
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
+    const phoneRegex = /^\+?[0-9]{10,15}$/;
     if (isLoginTab) {
       if (!email.trim() || !password.trim()) {
         setErrorMessage('Please enter both your email address and password.');
@@ -63,11 +52,15 @@ export const AuthModal = ({
         setErrorMessage('Please enter a valid email address.');
         return;
       }
-
       setIsLoading(true);
-
       try {
         const response = await authService.login(email, password);
+        if (response.user.role === 'admin') {
+          await authService.logout();
+          setErrorMessage('Access denied.');
+          setIsLoading(false);
+          return;
+        }
         onLoginSuccess(response.user);
         onClose();
       } catch (err) {
@@ -84,13 +77,15 @@ export const AuthModal = ({
         setErrorMessage('Please enter a valid email address.');
         return;
       }
+      if (!phoneRegex.test(phone.trim().replace(/[-\s]/g, ''))) {
+        setErrorMessage('Please enter a valid mobile phone number (10-15 digits).');
+        return;
+      }
       if (password.length < 6) {
         setErrorMessage('Password must contain at least 6 characters.');
         return;
       }
-
       setIsLoading(true);
-
       try {
         const response = await authService.register({
           name: name.trim(),
@@ -109,20 +104,15 @@ export const AuthModal = ({
       }
     }
   };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1a1b1d]/80 backdrop-blur-sm animate-fadeIn">
       <div className="bg-[#292b2e] rounded-3xl max-w-lg w-full p-6 sm:p-8 border border-[#3e4247] shadow-2xl relative space-y-5 text-white">
-        
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute right-4 top-4 p-2 text-[#8b9198] hover:text-white hover:bg-[#1b1c1e] rounded-xl transition-all cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
-
-        {/* Header */}
         <div className="flex items-center gap-3 border-b border-[#3e4247] pb-4">
           <div className="p-3 bg-[#3d2715] text-[#cb9d75] rounded-2xl border border-[#8e4e13]">
             <Shield className="w-6 h-6 fill-[#8e4e13]" />
@@ -134,8 +124,6 @@ export const AuthModal = ({
             <p className="text-xs text-[#b2a798]">Access 24/7 personal safety tools and guardian alerts</p>
           </div>
         </div>
-
-        {/* Tabs: Login vs Create Account */}
         <div className="flex bg-[#1b1c1e] p-1 rounded-xl border border-[#3e4247]">
           <button
             type="button"
@@ -164,15 +152,12 @@ export const AuthModal = ({
             <span>Create Account</span>
           </button>
         </div>
-
-        {/* Error alert */}
         {errorMessage && (
           <div className="bg-red-950/80 border border-red-800 text-red-200 p-3 rounded-xl text-xs font-bold flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>
         )}
-
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {!isLoginTab && (
             <div>
@@ -186,13 +171,12 @@ export const AuthModal = ({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Sudeena Sharma"
+                  placeholder="e.g. Riya Sharma"
                   className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-[#686f78] focus:outline-none focus:border-[#cb9d75]"
                 />
               </div>
             </div>
           )}
-
           <div>
             <label className="block text-xs font-bold text-[#e8dcd0] mb-1">
               Email Address *
@@ -209,7 +193,6 @@ export const AuthModal = ({
               />
             </div>
           </div>
-
           {!isLoginTab && (
             <div>
               <label className="block text-xs font-bold text-[#e8dcd0] mb-1">
@@ -228,7 +211,6 @@ export const AuthModal = ({
               </div>
             </div>
           )}
-
           <div>
             <label className="block text-xs font-bold text-[#e8dcd0] mb-1">
               Password *
@@ -252,7 +234,6 @@ export const AuthModal = ({
               </button>
             </div>
           </div>
-
           {!isLoginTab && (
             <div>
               <label className="block text-xs font-bold text-[#e8dcd0] mb-1">
@@ -274,7 +255,6 @@ export const AuthModal = ({
               </div>
             </div>
           )}
-
           <button
             type="submit"
             disabled={isLoading}
@@ -290,7 +270,6 @@ export const AuthModal = ({
             )}
           </button>
         </form>
-
       </div>
     </div>
   );

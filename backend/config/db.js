@@ -1,11 +1,4 @@
-/**
- * DATABASE CONNECTION (100% Free & Noob-Friendly)
- * ----------------------------------------------------
- * Connects to MongoDB (local or MongoDB Atlas).
- * If MongoDB is offline, it logs a clear beginner tip
- * instead of crashing the whole server.
- * ----------------------------------------------------
- */
+
 import mongoose from "mongoose";
 
 export const connectDB = async () => {
@@ -14,7 +7,7 @@ export const connectDB = async () => {
   try {
     console.log(`Connecting to MongoDB at: ${dbUrl}...`);
     const connection = await mongoose.connect(dbUrl, {
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of hanging
+      serverSelectionTimeoutMS: 5000, 
     });
 
     console.log(`✓ Successfully connected to MongoDB database: "${connection.connection.name}"`);

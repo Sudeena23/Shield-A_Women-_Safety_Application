@@ -57,7 +57,7 @@ export const AdminNavbar = ({
       await onLogout();
     } else {
       localStorage.removeItem("token");
-      window.location.href = "/login";
+      window.location.href = "/auth";
     }
   };
 
@@ -84,7 +84,7 @@ export const AdminNavbar = ({
     <>
       {isMobile && !collapsed && (
         <div
-          className="fixed inset-0 bg-black/50 z-40"
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40"
           onClick={() => setCollapsed(true)}
           aria-hidden="true"
         />
@@ -93,39 +93,40 @@ export const AdminNavbar = ({
       <aside
         className={`
           fixed left-0 top-0 h-screen z-50
-          bg-[#160c07] border-r border-[#302018]
+          bg-white border-r border-[#eee0ce] shadow-sm
           flex flex-col
           transition-all duration-300
           ${widthClass}
           ${mobileHiddenClass}
         `}
       >
-        <div className="h-16 sm:h-20 px-4 border-b border-[#302018] flex items-center justify-between shrink-0">
+        {/* Top Branding */}
+        <div className="h-16 sm:h-20 px-4 border-b border-[#eee0ce] flex items-center justify-between shrink-0 bg-[#fdfbf7]">
           {showLabels && (
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-[#9e6133] rounded-xl flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-[#9e6133] rounded-xl flex items-center justify-center shrink-0 shadow-sm">
                 <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-white font-bold text-base sm:text-lg truncate">
+                <h1 className="text-[#2d180c] font-black text-base sm:text-lg tracking-tight truncate">
                   SHIELD
                 </h1>
-                <p className="text-[#98745a] text-[10px] uppercase truncate">
-                  Admin Panel
+                <p className="text-[#814a27] text-[10px] font-bold uppercase tracking-wider truncate">
+                  Admin Portal
                 </p>
               </div>
             </div>
           )}
 
           {!showLabels && (
-            <div className="w-10 h-10 bg-[#9e6133] rounded-xl flex items-center justify-center mx-auto">
+            <div className="w-10 h-10 bg-[#9e6133] rounded-xl flex items-center justify-center mx-auto shadow-sm">
               <Shield className="w-6 h-6 text-white" />
             </div>
           )}
 
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="text-[#a9856c] hover:text-white p-2 rounded-lg hover:bg-[#27150d] shrink-0"
+            className="text-[#814a27] hover:text-[#2d180c] p-2 rounded-xl hover:bg-[#f7f0e6] transition-colors shrink-0 cursor-pointer"
             aria-label={collapsed ? "Open menu" : "Close menu"}
           >
             {isMobile ? (
@@ -138,34 +139,36 @@ export const AdminNavbar = ({
           </button>
         </div>
 
+        {/* Admin Profile Section */}
         {showLabels && (
-          <div className="p-4 sm:p-5 border-b border-[#302018] shrink-0">
-            <p className="text-[#80614d] text-[10px] uppercase mb-3">
-              Administrator
+          <div className="p-4 sm:p-5 border-b border-[#eee0ce] shrink-0 bg-[#fdfbf7]/60">
+            <p className="text-[#814a27]/70 text-[10px] font-extrabold uppercase tracking-wider mb-2.5">
+              Active Administrator
             </p>
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-full bg-[#3a2417] border border-[#6f4528] flex items-center justify-center shrink-0">
-                <span className="text-[#d7a77d] font-bold">
+              <div className="w-10 h-10 rounded-2xl bg-[#f7f0e6] border border-[#eee0ce] flex items-center justify-center shrink-0 shadow-xs">
+                <span className="text-[#9e6133] font-black text-sm">
                   {getInitial()}
                 </span>
               </div>
               <div className="min-w-0">
-                <p className="text-white text-sm font-medium truncate">
+                <p className="text-[#2d180c] text-xs sm:text-sm font-bold truncate">
                   {user?.name || "Admin User"}
                 </p>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
-                  <span className="text-[#80614d] text-xs">Online</span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                  <span className="text-[#814a27]/80 text-[11px] font-medium">Duty Active</span>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        <nav className="flex-1 p-3 overflow-y-auto">
+        {/* Navigation Items */}
+        <nav className="flex-1 p-3 overflow-y-auto space-y-1">
           {showLabels && (
-            <p className="text-[#80614d] text-[10px] uppercase px-3 mb-3">
-              Main Menu
+            <p className="text-[#814a27]/60 text-[10px] font-extrabold uppercase tracking-wider px-3 mb-2">
+              Management Menu
             </p>
           )}
 
@@ -180,29 +183,25 @@ export const AdminNavbar = ({
                   onClick={() => handleTabClick(item.id)}
                   title={!showLabels ? item.label : ""}
                   className={`
-                    relative w-full flex items-center rounded-lg transition
-                    ${showLabels ? "gap-3 px-3 py-3" : "justify-center p-3"}
+                    relative w-full flex items-center rounded-xl transition-all cursor-pointer text-xs
+                    ${showLabels ? "gap-3 px-3.5 py-3" : "justify-center p-3"}
                     ${
                       active
-                        ? "bg-[#8d542d] text-white"
-                        : "text-[#a9856c] hover:bg-[#24140c] hover:text-white"
+                        ? "bg-[#9e6133] text-white font-extrabold shadow-md shadow-[#9e6133]/25"
+                        : "text-[#814a27] hover:bg-[#f7f0e6] hover:text-[#2d180c] font-bold"
                     }
                   `}
                 >
-                  {active && (
-                    <span className="absolute left-0 top-2 bottom-2 w-1 bg-[#d9a16d] rounded-r" />
-                  )}
-
-                  <Icon className="w-5 h-5 shrink-0" />
+                  <Icon className="w-4 h-4 shrink-0" />
 
                   {showLabels && (
-                    <span className="text-sm font-medium truncate">
+                    <span className="truncate">
                       {item.label}
                     </span>
                   )}
 
                   {item.badge && activeSOSCount > 0 && showLabels && (
-                    <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shrink-0">
+                    <span className="ml-auto bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 shadow-xs animate-bounce">
                       {activeSOSCount}
                     </span>
                   )}
@@ -212,38 +211,36 @@ export const AdminNavbar = ({
           </div>
         </nav>
 
-        <div className="p-3 border-t border-[#302018] shrink-0">
+        {/* Footer Actions */}
+        <div className="p-3 border-t border-[#eee0ce] shrink-0 bg-[#fdfbf7] space-y-1">
           <button
             onClick={() => handleTabClick("settings")}
             title={!showLabels ? "Settings" : ""}
             className={`
-              relative w-full flex items-center rounded-lg transition
-              ${showLabels ? "gap-3 px-3 py-3" : "justify-center p-3"}
+              relative w-full flex items-center rounded-xl transition-all cursor-pointer text-xs
+              ${showLabels ? "gap-3 px-3.5 py-2.5" : "justify-center p-3"}
               ${
                 activeTab === "settings"
-                  ? "bg-[#8d542d] text-white"
-                  : "text-[#a9856c] hover:bg-[#24140c] hover:text-white"
+                  ? "bg-[#9e6133] text-white font-extrabold shadow-md shadow-[#9e6133]/25"
+                  : "text-[#814a27] hover:bg-[#f7f0e6] hover:text-[#2d180c] font-bold"
               }
             `}
           >
-            {activeTab === "settings" && (
-              <span className="absolute left-0 top-2 bottom-2 w-1 bg-[#d9a16d] rounded-r" />
-            )}
-            <Settings className="w-5 h-5 shrink-0" />
-            {showLabels && <span className="text-sm font-medium truncate">Settings</span>}
+            <Settings className="w-4 h-4 shrink-0" />
+            {showLabels && <span className="truncate">Settings</span>}
           </button>
 
           <button
             onClick={handleLogout}
             title={!showLabels ? "Logout" : ""}
             className={`
-              w-full flex items-center rounded-lg text-red-400
-              hover:bg-red-500/10 mt-1
-              ${showLabels ? "gap-3 px-3 py-3" : "justify-center p-3"}
+              w-full flex items-center rounded-xl text-red-600 font-bold
+              hover:bg-red-50 transition-colors cursor-pointer text-xs
+              ${showLabels ? "gap-3 px-3.5 py-2.5" : "justify-center p-3"}
             `}
           >
-            <LogOut className="w-5 h-5 shrink-0" />
-            {showLabels && <span className="text-sm">Logout</span>}
+            <LogOut className="w-4 h-4 shrink-0" />
+            {showLabels && <span>Logout</span>}
           </button>
         </div>
       </aside>
@@ -251,7 +248,7 @@ export const AdminNavbar = ({
       {isMobile && collapsed && (
         <button
           onClick={() => setCollapsed(false)}
-          className="fixed top-4 left-4 z-40 bg-[#9e6133] text-white p-3 rounded-lg shadow-lg"
+          className="fixed top-4 left-4 z-40 bg-[#9e6133] text-white p-3 rounded-2xl shadow-xl shadow-[#9e6133]/30 cursor-pointer"
           aria-label="Open menu"
         >
           <Menu className="w-5 h-5" />

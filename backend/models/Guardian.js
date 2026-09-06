@@ -18,6 +18,13 @@ const guardianSchema = new mongoose.Schema(
       required: true
     },
 
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      default: ""
+    },
+
     relationship: {
       type: String,
       default: "Friend"

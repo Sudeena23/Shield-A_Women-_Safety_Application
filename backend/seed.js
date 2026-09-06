@@ -1,11 +1,4 @@
-/**
- * DATABASE SEED SCRIPT (100% Free & Noob-Friendly)
- * ----------------------------------------------------
- * Seeds default administrator, test user, guardians,
- * sample SOS dispatches, broadcasts, and system settings.
- * Run with: npm run seed
- * ----------------------------------------------------
- */
+
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
@@ -38,7 +31,7 @@ const seedDatabase = async () => {
     const userPassword = await bcrypt.hash("user123", salt);
 
     const admin = await User.create({
-      name: "Shield Administrator",
+      name: "Shield Admini",
       email: "admin@shield.com",
       password: adminPassword,
       phone: "+977 9801234567",

@@ -3,12 +3,8 @@ import Location from "../models/Location.js";
 import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
-
-// All location routes require a logged-in user
 router.use(protect);
 
-// POST /api/location
-// Save/update the logged-in user's current location
 router.post("/", async (req, res) => {
   try {
     const { lat, lng, isSharing } = req.body;
@@ -45,9 +41,6 @@ router.post("/", async (req, res) => {
     });
   }
 });
-
-// GET /api/location/me
-// Get the logged-in user's own last saved location
 router.get("/me", async (req, res) => {
   try {
     const location = await Location.findOne({
@@ -65,9 +58,6 @@ router.get("/me", async (req, res) => {
     });
   }
 });
-
-// PATCH /api/location/stop
-// Stop sharing location
 router.patch("/stop", async (req, res) => {
   try {
     const location = await Location.findOneAndUpdate(

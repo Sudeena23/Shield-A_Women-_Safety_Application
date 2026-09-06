@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import http from "http";
@@ -12,14 +12,10 @@ import locationRoutes from "./routes/location.js";
 import adminRoutes from "./routes/admin.js";
 import Broadcast from "./models/Broadcast.js";
 
-dotenv.config();
-
-// Connect to MongoDB Atlas / Local MongoDB
 connectDB();
 
 const app = express();
 
-// Middleware
 app.use(
   cors({
     origin: "*",

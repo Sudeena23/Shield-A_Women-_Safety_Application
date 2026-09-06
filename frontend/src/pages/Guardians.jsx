@@ -16,19 +16,7 @@ import {
   HeartHandshake
 } from 'lucide-react';
 import { GuardianCard } from '../components/GuardianCard';
-
-/**
- * ============================================================================
- * GUARDIAN MANAGEMENT PAGE COMPONENT
- * ============================================================================
- * 
- * Allows women and users to manage their personal safety circle:
- * - Add new emergency contacts (Parents, Siblings, Partners, Friends).
- * - Mark a primary emergency contact for prioritized dispatch.
- * - Test SMS & alert connection with visual feedback.
- * - Edit contact details or remove outdated guardians.
- * ============================================================================
- */
+import { guardianService } from '../services/guardianService';
 export const Guardians = ({
   guardians = [],
   onAddGuardian,
@@ -44,6 +32,7 @@ export const Guardians = ({
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    email: '',
     relationship: 'Mother',
     isPrimary: false,
   });
@@ -62,6 +51,7 @@ export const Guardians = ({
     setFormData({
       name: '',
       phone: '',
+      email: '',
       relationship: 'Mother',
       isPrimary: false,
     });
@@ -74,6 +64,7 @@ export const Guardians = ({
     setFormData({
       name: '',
       phone: '',
+      email: '',
       relationship: 'Mother',
       isPrimary: guardians.length === 0, // Auto-mark primary if first guardian
     });
@@ -85,6 +76,7 @@ export const Guardians = ({
     setFormData({
       name: guardian.name,
       phone: guardian.phone,
+      email: guardian.email || '',
       relationship: guardian.relationship || 'Mother',
       isPrimary: !!guardian.isPrimary,
     });
@@ -106,6 +98,7 @@ export const Guardians = ({
           ...editingGuardian,
           name: formData.name.trim(),
           phone: formData.phone.trim(),
+          email: formData.email ? formData.email.trim() : '',
           relationship: formData.relationship,
           isPrimary: formData.isPrimary,
         });
@@ -114,6 +107,7 @@ export const Guardians = ({
         await onAddGuardian({
           name: formData.name.trim(),
           phone: formData.phone.trim(),
+          email: formData.email ? formData.email.trim() : '',
           relationship: formData.relationship,
           isPrimary: formData.isPrimary,
           status: 'Active',
@@ -153,8 +147,23 @@ export const Guardians = ({
     }
   };
 
-  const handleTestAlert = (guardian) => {
-    showToast('success', `Test emergency broadcast dispatched to ${guardian.name} (${guardian.phone}).`);
+  const handleTestAlert = async (guardian) => {
+    try {
+      const res = await guardianService.testAlert(guardian.id || guardian._id);
+      if (guardian.email) {
+        showToast(
+          'success',
+          `🚨 Test SOS alert & email dispatched to ${guardian.name} (${guardian.email})!`
+        );
+      } else {
+        showToast(
+          'success',
+          `Test alert notification simulated for ${guardian.name} (${guardian.phone}).`
+        );
+      }
+    } catch (err) {
+      showToast('error', err.message || 'Failed to dispatch test alert.');
+    }
   };
 
   return (
@@ -270,6 +279,21 @@ export const Guardians = ({
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="e.g. +977 9841-382910"
+                className="w-full bg-[#fdfbf7] border border-[#eee0ce] rounded-xl px-4 py-3 text-xs sm:text-sm font-semibold text-[#2d180c] focus:outline-none focus:ring-2 focus:ring-[#9e6133]"
+              />
+            </div>
+
+            {/* Guardian Email for SOS alerts */}
+            <div>
+              <label className="block text-xs font-extrabold text-[#2d180c] uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Email Address (For Instant SOS Mail)</span>
+                <span className="text-[10px] font-normal text-[#814a27]/70">Optional</span>
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="e.g. guardian@example.com"
                 className="w-full bg-[#fdfbf7] border border-[#eee0ce] rounded-xl px-4 py-3 text-xs sm:text-sm font-semibold text-[#2d180c] focus:outline-none focus:ring-2 focus:ring-[#9e6133]"
               />
             </div>

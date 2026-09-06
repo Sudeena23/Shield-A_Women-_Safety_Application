@@ -384,8 +384,8 @@ export const Navbar = ({
   ];
 
 
-  // Don't show navbar if user is not logged in
-  if (!currentUser) return null;
+  // Don't show navbar if user is not logged in or on the landing page (/)
+  if (!currentUser || location.pathname === '/') return null;
 
 
   // ============================================
@@ -611,7 +611,6 @@ export const Navbar = ({
                     </p>
 
                   </div>
-
 
                   <Link
                     to="/dashboard"

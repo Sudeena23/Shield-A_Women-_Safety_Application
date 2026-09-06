@@ -70,11 +70,11 @@ export const Dashboard = ({
             </div>
 
             <Link
-              to="/auth"
+              to="/settings"
               className="inline-flex items-center gap-2 bg-[#f7f0e6] hover:bg-[#eee0ce] text-[#2d180c] text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all border border-[#eee0ce] self-start sm:self-auto"
             >
               <Settings className="w-4 h-4 text-[#814a27]" />
-              <span>Edit Emergency Profile</span>
+              <span>Safety & Profile Settings</span>
             </Link>
           </div>
 

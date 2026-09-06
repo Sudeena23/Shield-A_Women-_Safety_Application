@@ -10,16 +10,9 @@ import { protect, adminProtect } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Protect all admin routes
+
 router.use(protect);
 router.use(adminProtect);
-
-// ==========================================
-// USER MANAGEMENT ENDPOINTS
-// ==========================================
-
-// GET /api/admin/users
-// Get all registered users
 router.get("/users", async (req, res) => {
   try {
     const users = await User.find().select("-password").sort({ createdAt: -1 });
@@ -36,8 +29,6 @@ router.get("/users", async (req, res) => {
   }
 });
 
-// GET /api/admin/users/:id
-// Get user by ID
 router.get("/users/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("-password");
@@ -60,9 +51,6 @@ router.get("/users/:id", async (req, res) => {
     });
   }
 });
-
-// POST /api/admin/users
-// Admin creates a new user account
 router.post("/users", async (req, res) => {
   try {
     const { name, email, phone, role, status } = req.body;

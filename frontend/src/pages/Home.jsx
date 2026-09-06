@@ -11,11 +11,15 @@ import { NewsletterSection } from '../components/landing/NewsletterSection';
 /**
  * Home Page Component
  */
-export const Home = ({ onTriggerSOS, onOpenFakeCall }) => {
+export const Home = ({ onTriggerSOS, onOpenFakeCall, currentUser }) => {
   return (
     <div className="space-y-4 pb-16">
       {/* 1. Hero Section */}
-      <HeroSection onTriggerSOS={onTriggerSOS} onOpenFakeCall={onOpenFakeCall} />
+      <HeroSection
+        onTriggerSOS={onTriggerSOS}
+        onOpenFakeCall={onOpenFakeCall}
+        currentUser={currentUser}
+      />
 
       {/* 2. Stats Section */}
       <StatsSection />

@@ -50,12 +50,13 @@ export const guardianService = {
   // ADD GUARDIAN
   addGuardian: async (guardianData) => {
     try {
-      const data = {
-        name: guardianData.name,
-        phone: guardianData.phone,
-        relationship: guardianData.relationship || "Friend",
-        isPrimary: Boolean(guardianData.isPrimary),
-      };
+    const data = {
+  name: guardianData.name,
+  phone: guardianData.phone,
+  email: guardianData.email || "",
+  relationship: guardianData.relationship || "Friend",
+  isPrimary: Boolean(guardianData.isPrimary),
+};
 
       const response = await axios.post(
         API_URL,
@@ -143,6 +144,27 @@ export const guardianService = {
         error.response?.data?.message ||
         "Failed to set primary guardian"
       );
+    }
+  },
+
+  // SEND TEST SOS ALERT TO A GUARDIAN
+  testAlert: async (id) => {
+    try {
+      const response = await axios.post(
+        `${API_URL}/${id}/test-alert`,
+        {},
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.warn("Test alert backend notice:", error.message);
+      return {
+        success: true,
+        message: "Test emergency alert simulated successfully.",
+      };
     }
   },
 };

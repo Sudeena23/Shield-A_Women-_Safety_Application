@@ -42,6 +42,35 @@ const userSchema = new mongoose.Schema(
       default: ""
     },
 
+    address: {
+      type: String,
+      default: "Kathmandu, Nepal"
+    },
+
+    emergencyPin: {
+      type: String,
+      default: "4321"
+    },
+
+    settings: {
+      type: Object,
+      default: {
+        autoPush: true,
+        sirenSound: true,
+        audioRecord: true,
+        locationStreaming: true,
+        silentDuress: true,
+        nightMode: false,
+        autoSmsGuardians: true,
+        sosDelaySeconds: 0,
+        fakeCallerName: "Mom",
+        fakeCallDelaySeconds: 5,
+        sirenVolume: 80,
+        guardianCheckInReminder: true,
+        lowBatteryDistressAlert: true
+      }
+    },
+
     status: {
       type: String,
       enum: ["Active", "Suspended"],

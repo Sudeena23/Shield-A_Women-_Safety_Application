@@ -26,55 +26,27 @@ import {
   LogIn,
   UserPlus
 } from 'lucide-react';
-
-/**
- * ============================================================================
- * SHIELD AUTHENTICATION COMPONENT (Login & Create Account)
- * ============================================================================
- * 
- * Features:
- * 1. Dual-Panel Modern Design (Interactive Auth Form + Safety Sanctuary Showcase).
- * 2. Segmented Pill Switcher (Login vs Create Account) with URL Query Param support.
- * 3. Real-Time Password Strength Evaluator (Progress bars + validation checklist).
- * 4. Multi-Step Registration with clear Safety Profile setup (Emergency PIN & Blood Group).
- * 5. Informative Field Guides explaining why emergency info (PIN, Blood Group) is collected.
- * 6. Live connection to backend authentication API.
- * 7. Interactive Forgot Password reset simulation modal.
- * ============================================================================
- */
 export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  // Tab & Step State: 'login' vs 'create-account'
   const initialTab = searchParams.get('tab') === 'signup' || searchParams.get('tab') === 'create-account' ? false : true;
   const [isLoginTab, setIsLoginTab] = useState(initialTab);
-  const [signupStep, setSignupStep] = useState(1); // Step 1: Essentials, Step 2: Safety Profile
-
-  // Password Visibility
+  const [signupStep, setSignupStep] = useState(1); 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-
-  // Forgot Password Modal State
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
-
-  // Status & Feedback Messages
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Form Fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [bloodGroup, setBloodGroup] = useState('O+');
-
-  // Sync tab with URL search parameter if changed
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'signup' || tabParam === 'create-account') {
@@ -83,8 +55,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
       setIsLoginTab(true);
     }
   }, [searchParams]);
-
-  // Tab Switch Handler
   const handleTabChange = (loginMode) => {
     setIsLoginTab(loginMode);
     setSignupStep(1);
@@ -92,13 +62,12 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
     setSuccessMessage(null);
     setSearchParams(loginMode ? { tab: 'login' } : { tab: 'create-account' });
   };
-
-  // Email Validation Helper
   const validateEmail = (emailStr) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr.trim());
   };
-
-  // Password Strength Calculation
+  const validatePhone = (phoneStr) => {
+    return /^\+?[0-9]{10,15}$/.test(phoneStr.trim().replace(/[-\s]/g, ''));
+  };
   const calculatePasswordStrength = (pwd) => {
     let score = 0;
     if (!pwd) return { score: 0, label: 'None', color: 'bg-neutral-600' };
@@ -107,20 +76,15 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
     if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score += 1;
     if (/[0-9]/.test(pwd)) score += 1;
     if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
-
     if (score <= 2) return { score: 1, label: 'Weak', color: 'bg-rose-500', text: 'text-rose-400' };
     if (score <= 3) return { score: 2, label: 'Fair', color: 'bg-amber-500', text: 'text-amber-400' };
     if (score <= 4) return { score: 3, label: 'Good', color: 'bg-emerald-500', text: 'text-emerald-400' };
     return { score: 4, label: 'Strong', color: 'bg-emerald-400', text: 'text-emerald-300' };
   };
-
   const pwdStrength = calculatePasswordStrength(password);
-
-  // Step 1 Validation
   const handleNextStep = (e) => {
     e.preventDefault();
     setErrorMessage(null);
-
     if (!name.trim()) {
       setErrorMessage('Please enter your full name.');
       return;
@@ -129,20 +93,16 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
       setErrorMessage('Please enter a valid email address.');
       return;
     }
-    if (!phone.trim()) {
-      setErrorMessage('Please enter your mobile phone number for emergency contact.');
+    if (!phone.trim() || !validatePhone(phone)) {
+      setErrorMessage('Please enter a valid mobile phone number (10-15 digits).');
       return;
     }
-
     setSignupStep(2);
   };
-
-  // Login Submit Handler (Connected to Real Backend)
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
-
     if (!email.trim() || !password.trim()) {
       setErrorMessage('Please provide both your email and password.');
       return;
@@ -151,16 +111,20 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
       setErrorMessage('Please enter a valid email format.');
       return;
     }
-
     setIsLoading(true);
-
     try {
       const response = await authService.login(email, password);
       const loggedUser = response.user;
+      if (loggedUser.role === 'admin') {
+        await authService.logout();
+        setErrorMessage('Access denied.');
+        setIsLoading(false);
+        return;
+      }
       onLoginSuccess(loggedUser);
-      setSuccessMessage(`Login successful! Welcome, ${loggedUser.name}. Opening ${loggedUser.role === 'admin' ? 'Admin Portal' : 'Dashboard'}...`);
+      setSuccessMessage(`Login successful! Welcome, ${loggedUser.name}. Opening Dashboard...`);
       setTimeout(() => {
-        navigate(loggedUser.role === 'admin' ? '/admin' : '/dashboard');
+        navigate('/dashboard');
       }, 750);
     } catch (err) {
       setErrorMessage(err.message || 'Incorrect email or password. Please check your credentials.');
@@ -168,13 +132,10 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
       setIsLoading(false);
     }
   };
-
-  // Create Account Submit Handler (Connected to Real Backend)
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
-
     if (password.length < 6) {
       setErrorMessage('Password must contain at least 6 characters.');
       return;
@@ -183,9 +144,7 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
       setErrorMessage('Password and Confirm Password do not match.');
       return;
     }
-
     setIsLoading(true);
-
     try {
       const response = await authService.register({
         name: name.trim(),
@@ -207,8 +166,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
       setIsLoading(false);
     }
   };
-
-  // Forgot Password Submit Simulation
   const handleForgotPasswordSubmit = (e) => {
     e.preventDefault();
     if (!forgotEmail.trim() || !validateEmail(forgotEmail)) {
@@ -223,70 +180,11 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
       setSuccessMessage('Password reset instructions have been dispatched to your email.');
     }, 2000);
   };
-
-  // ============================================================================
-  // IF USER IS ALREADY LOGGED IN
-  // ============================================================================
-  if (currentUser) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 bg-gradient-to-b from-[#232527] to-[#1a1b1d] text-white">
-        <div className="max-w-lg w-full bg-[#292b2e] rounded-3xl p-8 border border-[#3e4247] shadow-2xl space-y-6 text-center">
-          
-          {/* Avatar Icon */}
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#9e6133] to-[#d4833b] text-white mx-auto flex items-center justify-center shadow-lg shadow-[#9e6133]/30 border border-[#b86d29]/40">
-            <Shield className="w-10 h-10" />
-          </div>
-
-          <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#e8d5bf] bg-[#3d2715] px-3 py-1 rounded-full border border-[#8e4e13]">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Logged In Session
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-black text-white">{currentUser.name}</h1>
-            <p className="text-xs sm:text-sm text-[#b2a798]">{currentUser.email} • {currentUser.phone || 'No phone'}</p>
-            <p className="text-xs font-semibold text-[#cb9d75]">
-              Role: <span className="uppercase text-white">{currentUser.role || 'user'}</span> • Blood: <span className="text-white">{currentUser.bloodGroup || 'O+'}</span>
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-[#3e4247]">
-            <button
-              onClick={() => navigate(currentUser.role === 'admin' ? '/admin' : '/dashboard')}
-              className="w-full bg-[#8e4e13] hover:bg-[#a65c17] text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
-            >
-              <span>Go to {currentUser.role === 'admin' ? 'Admin Portal' : 'Safety Dashboard'}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={onLogout}
-              className="w-full bg-[#1f2123] hover:bg-[#2c2f32] text-[#d4833b] hover:text-white font-bold py-3 px-4 rounded-xl border border-[#3e4247] text-xs transition-all cursor-pointer"
-            >
-              Sign Out
-            </button>
-          </div>
-
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================================================
-  // MAIN LOGIN & CREATE ACCOUNT SCREEN
-  // ============================================================================
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col justify-center bg-[#232527] text-[#e8dcd0]">
-      
-      {/* 50 / 50 Split Layout Container */}
       <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[calc(100vh-4rem)]">
-        
-        {/* ====================================================================
-            LEFT PANEL: INTERACTIVE AUTH FORM
-            ==================================================================== */}
         <div className="lg:col-span-7 flex flex-col justify-center px-4 py-8 sm:px-10 lg:px-16 bg-[#282a2c] relative">
-          
           <div className="w-full max-w-[440px] mx-auto space-y-6">
-            
-            {/* Top Brand & Badge */}
             <div className="text-center space-y-3">
               <div className="relative inline-block">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#f3e5d3] to-[#e8d5bf] text-[#8e4e13] mx-auto flex items-center justify-center shadow-lg shadow-[#8e4e13]/20 border border-[#cb9d75]/40">
@@ -297,7 +195,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                   <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-[#282a2c]"></span>
                 </span>
               </div>
-
               <div>
                 <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                   {isLoginTab ? 'Login to Shield' : 'Create an Account'}
@@ -309,8 +206,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                 </p>
               </div>
             </div>
-
-            {/* Segmented Pill Tab Switcher: "Login" vs "Create Account" */}
             <div className="bg-[#1b1c1e] p-1 rounded-2xl border border-[#3e4247] flex items-center shadow-inner">
               <button
                 type="button"
@@ -324,7 +219,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                 <LogIn className="w-3.5 h-3.5" />
                 <span>Login</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => handleTabChange(false)}
@@ -338,29 +232,20 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                 <span>Create Account</span>
               </button>
             </div>
-
-            {/* Notification Alerts */}
             {errorMessage && (
               <div className="bg-red-950/80 border border-red-800 text-red-200 p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 shadow-md animate-fadeIn">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                 <div className="flex-1">{errorMessage}</div>
               </div>
             )}
-
             {successMessage && (
               <div className="bg-emerald-950/80 border border-emerald-800 text-emerald-200 p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 shadow-md animate-fadeIn">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div className="flex-1">{successMessage}</div>
               </div>
             )}
-
-            {/* ================================================================
-                FORM: LOGIN TAB
-                ================================================================ */}
             {isLoginTab ? (
               <form onSubmit={handleLoginSubmit} className="space-y-4">
-                
-                {/* Email Address */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-extrabold text-[#e8dcd0]">
                     Email Address <span className="text-[#cb9d75]">*</span>
@@ -377,8 +262,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                     />
                   </div>
                 </div>
-
-                {/* Password with Forgot Password helper */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-extrabold text-[#e8dcd0]">
@@ -412,8 +295,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                     </button>
                   </div>
                 </div>
-
-                {/* Remember Me Checkbox */}
                 <div className="flex items-center justify-between pt-1">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
@@ -429,8 +310,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                     SSL 256-bit Encrypted
                   </span>
                 </div>
-
-                {/* Primary Login Button */}
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -448,8 +327,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                     </>
                   )}
                 </button>
-
-                {/* Footer Switcher */}
                 <div className="text-center pt-3">
                   <p className="text-xs text-[#b2a798]">
                     Don't have an account?{' '}
@@ -462,22 +339,16 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                     </button>
                   </p>
                 </div>
-
               </form>
             ) : (
-              /* ================================================================
-                  FORM: MULTI-STEP CREATE ACCOUNT TAB
-                  ================================================================ */
               <div className="space-y-4">
-                
-                {/* Step Indicator Progress Bar */}
                 <div className="bg-[#1b1c1e] p-3 rounded-2xl border border-[#3e4247] space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-[#b2a798]">
                     <span className="flex items-center gap-1.5 text-white">
                       <span className="w-5 h-5 rounded-full bg-[#8e4e13] text-white flex items-center justify-center text-[10px]">
                         {signupStep}
                       </span>
-                      {signupStep === 1 ? 'Step 1: Account Essentials' : 'Step 2: Safety Profile & PIN'}
+                      {signupStep === 1 ? 'Step 1: Account Essentials' : 'Step 2: Password & Security'}
                     </span>
                     <span className="text-[#cb9d75] font-extrabold">{signupStep === 1 ? '50% Complete' : '100% Complete'}</span>
                   </div>
@@ -488,12 +359,8 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                     />
                   </div>
                 </div>
-
-                {/* CREATE ACCOUNT STEP 1: Essentials (Name, Email, Phone) */}
                 {signupStep === 1 ? (
                   <form onSubmit={handleNextStep} className="space-y-3.5">
-                    
-                    {/* Full Name */}
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-[#e8dcd0]">
                         Full Name <span className="text-[#cb9d75]">*</span>
@@ -510,8 +377,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                         />
                       </div>
                     </div>
-
-                    {/* Email Address */}
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-[#e8dcd0]">
                         Email Address <span className="text-[#cb9d75]">*</span>
@@ -528,8 +393,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                         />
                       </div>
                     </div>
-
-                    {/* Phone Number */}
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <label className="block text-xs font-bold text-[#e8dcd0]">
@@ -549,16 +412,13 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                         />
                       </div>
                     </div>
-
-                    {/* Step 1 Submit Button */}
                     <button
                       type="submit"
                       className="w-full bg-[#8e4e13] hover:bg-[#a65c17] text-white font-extrabold py-3 px-6 rounded-xl text-xs transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer mt-2"
                     >
-                      <span>Continue to Security & PIN</span>
+                      <span>Create Account</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
-
                     <div className="text-center pt-2">
                       <p className="text-xs text-[#b2a798]">
                         Already registered?{' '}
@@ -571,13 +431,9 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                         </button>
                       </p>
                     </div>
-
                   </form>
                 ) : (
-                  /* CREATE ACCOUNT STEP 2: Password, Emergency PIN & Blood Group */
                   <form onSubmit={handleSignupSubmit} className="space-y-3.5">
-                    
-                    {/* Password */}
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-[#e8dcd0]">
                         Create Password <span className="text-[#cb9d75]">*</span>
@@ -600,8 +456,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
-
-                      {/* Password Strength Meter */}
                       {password && (
                         <div className="space-y-1 pt-1">
                           <div className="flex items-center justify-between text-[10px]">
@@ -617,8 +471,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                         </div>
                       )}
                     </div>
-
-                    {/* Confirm Password */}
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-[#e8dcd0]">
                         Confirm Password <span className="text-[#cb9d75]">*</span>
@@ -642,8 +494,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                         </button>
                       </div>
                     </div>
-
-                    {/* Blood Group */}
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-[#e8dcd0]">
                         Blood Group (Optional for First Responders)
@@ -663,8 +513,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                         </select>
                       </div>
                     </div>
-
-                    {/* Step 2 Actions */}
                     <div className="flex gap-2 pt-1">
                       <button
                         type="button"
@@ -692,26 +540,15 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                         )}
                       </button>
                     </div>
-
                   </form>
                 )}
-
               </div>
             )}
-
           </div>
         </div>
-
-        {/* ====================================================================
-            RIGHT PANEL: SAFETY SANCTUARY SHOWCASE (Desktop View)
-            ==================================================================== */}
         <div className="hidden lg:flex lg:col-span-5 flex-col justify-between p-12 lg:p-14 bg-gradient-to-br from-[#381b05] via-[#2d1503] to-[#1e0d02] text-white relative overflow-hidden border-l border-[#482307]">
-          
-          {/* Ambient Lighting Accents */}
           <div className="absolute -top-24 -right-24 w-80 h-80 bg-[#cb9d75]/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-[#8e4e13]/25 rounded-full blur-3xl pointer-events-none" />
-
-          {/* Top Brand Header */}
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-[#f3e5d3] text-[#8e4e13] flex items-center justify-center font-black text-sm shadow">
@@ -722,14 +559,11 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                 <span className="text-[10px] text-[#cb9d75] font-medium">Women's Safety Platform</span>
               </div>
             </div>
-
             <span className="bg-[#2a1303] text-[#cb9d75] text-[10px] font-bold px-3 py-1 rounded-full border border-[#482307] flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               24/7 Active
             </span>
           </div>
-
-          {/* Hero Pitch & Feature List */}
           <div className="space-y-6 max-w-md my-auto relative z-10">
             <div>
               <span className="text-xs font-bold text-[#cb9d75] uppercase tracking-widest block mb-2">
@@ -739,15 +573,10 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                 A sanctuary in your pocket.
               </h2>
             </div>
-
             <p className="text-xs sm:text-sm text-[#c2b2a1] leading-relaxed">
               Engineered for swift emergency response, live encrypted location sharing, and immediate connection to guardians and local helplines.
             </p>
-
-            {/* Feature Cards Grid */}
             <div className="space-y-2.5 pt-2">
-              
-              {/* Feature 1: Instant SOS */}
               <div className="bg-[#2a1303]/90 border border-[#482307] p-3 rounded-2xl flex items-center gap-3 shadow-md">
                 <div className="w-9 h-9 rounded-xl bg-red-950/80 text-red-400 flex items-center justify-center shrink-0 border border-red-800/40">
                   <ShieldAlert className="w-5 h-5" />
@@ -757,8 +586,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                   <p className="text-[11px] text-[#b2a798]">Sends instant GPS alert with siren to your guardians.</p>
                 </div>
               </div>
-
-              {/* Feature 2: Live Location */}
               <div className="bg-[#2a1303]/90 border border-[#482307] p-3 rounded-2xl flex items-center gap-3 shadow-md">
                 <div className="w-9 h-9 rounded-xl bg-emerald-950/80 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-800/40">
                   <Radio className="w-5 h-5" />
@@ -768,8 +595,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                   <p className="text-[11px] text-[#b2a798]">Continuous breadcrumb trail for late night transit safety.</p>
                 </div>
               </div>
-
-              {/* Feature 3: Fake Call */}
               <div className="bg-[#2a1303]/90 border border-[#482307] p-3 rounded-2xl flex items-center gap-3 shadow-md">
                 <div className="w-9 h-9 rounded-xl bg-amber-950/80 text-amber-400 flex items-center justify-center shrink-0 border border-amber-800/40">
                   <PhoneCall className="w-5 h-5" />
@@ -779,11 +604,8 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                   <p className="text-[11px] text-[#b2a798]">Simulate incoming calls to safely exit uncomfortable situations.</p>
                 </div>
               </div>
-
             </div>
           </div>
-
-          {/* Testimonial & Community Badge */}
           <div className="bg-[#2a1303]/90 border border-[#482307] rounded-2xl p-4 space-y-2 shadow-lg relative z-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1 text-[#e0b070]">
@@ -793,28 +615,19 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
               </div>
               <span className="text-[10px] text-[#cb9d75] font-bold">Verified User</span>
             </div>
-
             <p className="text-xs text-[#e8dcd0] italic leading-relaxed">
               "The SOS button and fake call feature gave me real peace of mind on late walks home from campus."
             </p>
-
             <div className="flex items-center justify-between pt-1 text-[11px]">
               <span className="font-extrabold text-white">Meera P., Kathmandu</span>
               <span className="text-[#a89b8d]">Protected since 2024</span>
             </div>
           </div>
-
         </div>
-
       </div>
-
-      {/* ====================================================================
-          FORGOT PASSWORD MODAL
-          ==================================================================== */}
       {isForgotPasswordOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn">
           <div className="bg-[#292b2e] border border-[#3e4247] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-white">
-            
             <div className="flex items-center justify-between pb-2 border-b border-[#3e4247]">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-[#3d2715] text-[#cb9d75] flex items-center justify-center">
@@ -830,11 +643,9 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                 ✕
               </button>
             </div>
-
             <p className="text-xs text-[#b2a798]">
               Enter your registered email address and we'll send a secure password reset link with instructions.
             </p>
-
             {forgotSent ? (
               <div className="p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-200 text-xs rounded-xl flex items-center gap-2 font-bold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -855,7 +666,6 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                     className="w-full bg-[#1b1c1e] border border-[#3e4247] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#686f78] focus:outline-none focus:border-[#cb9d75]"
                   />
                 </div>
-
                 <div className="flex gap-2 pt-2">
                   <button
                     type="button"
@@ -873,11 +683,9 @@ export const Auth = ({ onLoginSuccess, currentUser, onLogout }) => {
                 </div>
               </form>
             )}
-
           </div>
         </div>
       )}
-
     </div>
   );
 };
