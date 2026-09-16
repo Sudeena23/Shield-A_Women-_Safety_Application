@@ -61,6 +61,17 @@ router.post("/", async (req, res) => {
       }).catch((e) => console.warn("Welcome email background error:", e.message));
     }
 
+    // If email is provided, send guardian confirmation email asynchronously
+    if (newGuardian.email) {
+      const user = await User.findById(req.userId);
+      emailService.sendGuardianWelcomeEmail({
+        guardianEmail: newGuardian.email,
+        guardianName: newGuardian.name,
+        userName: user?.name || "A Shield Safety User",
+        userPhone: user?.phone || phone,
+      }).catch((e) => console.warn("Welcome email background error:", e.message));
+    }
+
     res.status(201).json({
       success: true,
       guardian: newGuardian

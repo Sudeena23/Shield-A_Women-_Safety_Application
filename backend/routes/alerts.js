@@ -123,6 +123,55 @@ router.post("/", async (req, res) => {
       });
     }
 
+    // ----------------------------------------------------
+    // NODEMAILER: Dispatch Emergency Email to Trusted Contacts
+    // ----------------------------------------------------
+    const guardiansWithEmail = guardians.filter(
+      (g) => g.email && g.email.includes("@")
+    );
+
+    if (guardiansWithEmail.length > 0) {
+      console.log(
+        `[SOS Alert] Disagreeing with danger: Dispatching emergency emails to ${guardiansWithEmail.length} trusted contacts...`
+      );
+
+      // Send to all guardians concurrently in the background
+      Promise.allSettled(
+        guardiansWithEmail.map(async (guardian) => {
+          const result = await emailService.sendSOSEmergencyEmail({
+            guardianEmail: guardian.email,
+            guardianName: guardian.name,
+            victimName: user?.name || "A Shield User",
+            victimPhone: user?.phone || "Not specified",
+            victimEmail: user?.email || "",
+            address: address || "GPS Coordinates Attached",
+            lat: Number(lat),
+            lng: Number(lng),
+            alertType: type || "Emergency SOS Alert",
+            duressActivated: !!duressActivated,
+            timestamp: new Date().toLocaleString(),
+          });
+
+          // Log to audit log so administrator can see the email dispatch
+          await AuditLog.create({
+            action: "EMERGENCY_EMAIL_DISPATCHED",
+            category: "dispatch",
+            details: `Emergency SOS email sent to ${guardian.name} (${guardian.email}) for user ${user?.name || "Citizen"} at GPS: ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`,
+            actor: user?.email || "SOS User",
+            target: guardian.email,
+            ip: req.ip || "127.0.0.1",
+          }).catch(() => {});
+
+          return result;
+        })
+      ).then((results) => {
+        const fulfilled = results.filter((r) => r.status === "fulfilled").length;
+        console.log(`[SOS Alert] ✓ Successfully logged & dispatched ${fulfilled} guardian alert emails.`);
+      }).catch((e) => {
+        console.warn("[SOS Alert] Background email error:", e.message);
+      });
+    }
+
     res.status(201).json({
       success: true,
       alert,
